@@ -80,7 +80,7 @@ func (c *Client) GenerateTextWithModel(ctx context.Context, model, prompt string
 
 	ctx = context.WithoutCancel(ctx)
 
-	httpReq, err := http.NewRequestWithContext(ctx, "POST", c.baseURL+"/api/generate", bytes.NewBuffer(reqBody))
+	httpReq, err := http.NewRequest("POST", c.baseURL+"/api/generate", bytes.NewBuffer(reqBody))
 	if err != nil {
 		return "", fmt.Errorf("failed to create request: %w", err)
 	}
@@ -124,7 +124,7 @@ func (c *Client) GenerateTextStreamWithModel(ctx context.Context, model, prompt 
 		return fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	httpReq, err := http.NewRequestWithContext(ctx, "POST", c.baseURL+"/api/generate", bytes.NewBuffer(reqBody))
+	httpReq, err := http.NewRequest("POST", c.baseURL+"/api/generate", bytes.NewBuffer(reqBody))
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
@@ -183,7 +183,7 @@ func (c *Client) GenerateEmbeddingWithModel(ctx context.Context, model, text str
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	httpReq, err := http.NewRequestWithContext(ctx, "POST", c.baseURL+"/api/embed", bytes.NewBuffer(reqBody))
+	httpReq, err := http.NewRequest("POST", c.baseURL+"/api/embed", bytes.NewBuffer(reqBody))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -215,7 +215,7 @@ func (c *Client) GenerateEmbeddingWithModel(ctx context.Context, model, text str
 
 // HealthCheck checks if Ollama is running and accessible
 func (c *Client) HealthCheck(ctx context.Context) error {
-	httpReq, err := http.NewRequestWithContext(ctx, "GET", c.baseURL+"/api/tags", nil)
+	httpReq, err := http.NewRequest("GET", c.baseURL+"/api/tags", nil)
 	if err != nil {
 		return fmt.Errorf("failed to create health check request: %w", err)
 	}
@@ -235,7 +235,7 @@ func (c *Client) HealthCheck(ctx context.Context) error {
 
 // ListModels returns a list of available models
 func (c *Client) ListModels(ctx context.Context) ([]string, error) {
-	httpReq, err := http.NewRequestWithContext(ctx, "GET", c.baseURL+"/api/tags", nil)
+	httpReq, err := http.NewRequest("GET", c.baseURL+"/api/tags", nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
