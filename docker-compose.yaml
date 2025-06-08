@@ -1,0 +1,100 @@
+version: '3'
+services:
+  opensearch:
+    image: opensearchproject/opensearch:2.13.0
+    container_name: opensearch
+    environment:
+      - discovery.type=single-node
+      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=ChangeMeNow123!
+      - "OPENSEARCH_JAVA_OPTS=-Xms8g -Xmx8g"
+      - plugins.security.disabled=true
+      - cluster.name=conversation-cluster
+      - node.name=opensearch-node-01
+      - "plugins.ml_commons.native_memory_threshold=95"
+      - "plugins.ml_commons.max_model_on_node=10"
+      - "plugins.ml_commons.only_run_on_ml_node=false"
+      - "indices.breaker.total.limit=95%"
+      - "indices.breaker.fielddata.limit=80%"
+      - "indices.breaker.request.limit=80%"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+    ports:
+      - 9200:9200
+      - 9300:9300
+    networks:
+      - opensearch-net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -q '\"status\":\"green\"\\|\"status\":\"yellow\"'"]
+      interval: 20s
+      timeout: 10s
+      retries: 3
+      
+  opensearch-dashboards:
+    image: opensearchproject/opensearch-dashboards:2.13.0
+    container_name: opensearch-dashboards
+    ports:
+      - 5601:5601
+    environment:
+      - OPENSEARCH_HOSTS=["http://opensearch:9200"]
+      - OPENSEARCH_USERNAME=admin
+      - OPENSEARCH_PASSWORD=ChangeMeNow123!
+      - DISABLE_SECURITY_DASHBOARDS_PLUGIN=true
+      - OPENSEARCH_SSL_VERIFICATIONMODE=none
+    networks:
+      - opensearch-net
+    depends_on:
+      opensearch:
+        condition: service_healthy
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: qdrant
+    ports:
+      - "6333:6333"  # REST API
+      - "6334:6334"  # gRPC API
+    volumes:
+      - qdrant-data:/qdrant/storage
+    networks:
+      - opensearch-net
+
+  open-librarian-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: open-librarian-server
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - OPENSEARCH_URL=http://opensearch:9200
+      - OLLAMA_URL=http://host.docker.internal:11434
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6334
+    depends_on:
+      opensearch:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+    networks:
+      - opensearch-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+volumes:
+  opensearch-data:
+  qdrant-data:
+
+networks:
+  opensearch-net:
+    driver: bridge
