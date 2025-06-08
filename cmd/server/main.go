@@ -47,9 +47,9 @@ func main() {
 	server := &http.Server{
 		Addr:         ":" + port,
 		Handler:      router,
-		ReadTimeout:  30 * time.Second,
-		WriteTimeout: 30 * time.Second,
-		IdleTimeout:  60 * time.Second,
+		ReadTimeout:  15 * time.Minute, // Increased to match longest operation timeout
+		WriteTimeout: 15 * time.Minute, // Increased to match longest operation timeout
+		IdleTimeout:  5 * time.Minute,  // Increased but kept reasonable
 	}
 
 	// Start server in a goroutine
@@ -90,7 +90,7 @@ func setupRouter(httpServer *api.HTTPServer) *chi.Mux {
 	router.Use(middleware.Recoverer)
 	router.Use(middleware.RequestID)
 	router.Use(middleware.RealIP)
-	router.Use(middleware.Timeout(60 * time.Second))
+	router.Use(middleware.Timeout(30 * time.Minute)) // Increased to be less than HTTP server timeout
 
 	// CORS configuration
 	router.Use(cors.Handler(cors.Options{
