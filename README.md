@@ -124,7 +124,10 @@ AI 요약 생성 (Ollama)
 
 ```bash
 # OpenSearch, Qdrant, API 서버 실행
-docker-compose up -d
+./scripts/setup-services.sh
+
+# Rebuild API 서버 (코드 변경 시)
+./scripts/rebuild-server.sh
 
 # 서비스 상태 확인
 curl http://localhost:8080/health
