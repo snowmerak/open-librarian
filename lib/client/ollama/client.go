@@ -78,6 +78,8 @@ func (c *Client) GenerateTextWithModel(ctx context.Context, model, prompt string
 		return "", fmt.Errorf("failed to marshal request: %w", err)
 	}
 
+	ctx = context.WithoutCancel(ctx)
+
 	httpReq, err := http.NewRequestWithContext(ctx, "POST", c.baseURL+"/api/generate", bytes.NewBuffer(reqBody))
 	if err != nil {
 		return "", fmt.Errorf("failed to create request: %w", err)
