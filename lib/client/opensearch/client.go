@@ -76,7 +76,7 @@ func NewClient(baseURL string) *Client {
 		baseURL:          baseURL,
 		languageDetector: language.NewDetector(),
 		httpClient: &http.Client{
-			Timeout: 30 * time.Second,
+			Timeout: 3 * time.Minute,
 		},
 	}
 }
