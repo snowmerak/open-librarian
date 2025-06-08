@@ -1,0 +1,582 @@
+openapi: 3.0.3
+info:
+  title: Open Librarian API
+  description: 지능형 검색 서비스 'Open Librarian'의 API 명세서
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@insightfinder.io
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+  - url: https://api.insightfinder.io
+    description: Production server
+
+security:
+  - ApiKeyAuth: []
+
+paths:
+  /health:
+    get:
+      summary: Health Check
+      description: 서버 상태를 확인합니다.
+      tags:
+        - Health
+      security: []
+      responses:
+        '200':
+          description: 서버가 정상 작동 중
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "healthy"
+                  time:
+                    type: string
+                    format: date-time
+        '503':
+          description: 서비스 이용 불가
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /articles:
+    post:
+      summary: Add Article
+      description: 새로운 아티클을 추가합니다
+      tags:
+        - Articles
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ArticleRequest'
+      responses:
+        '201':
+          description: 아티클이 성공적으로 추가됨
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ArticleResponse'
+        '400':
+          description: 잘못된 요청
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: 인증 실패
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: 서버 오류
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /articles/{id}:
+    get:
+      summary: Get Article
+      description: 특정 아티클을 조회합니다
+      tags:
+        - Articles
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 아티클 ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 아티클 조회 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Article'
+        '404':
+          description: 아티클을 찾을 수 없음
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: 서버 오류
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /search:
+    post:
+      summary: Hybrid Search
+      description: 하이브리드 검색(벡터 + 키워드)을 수행합니다
+      tags:
+        - Search
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SearchRequest'
+      responses:
+        '200':
+          description: 검색 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResponse'
+        '400':
+          description: 잘못된 요청
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: 서버 오류
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /search/keyword:
+    get:
+      summary: Keyword Search
+      description: 키워드 기반 검색을 수행합니다
+      tags:
+        - Search
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: 검색 쿼리
+          schema:
+            type: string
+        - name: lang
+          in: query
+          required: false
+          description: "언어 코드 (ko, en, ja, zh, es, fr, de, ru)"
+          schema:
+            type: string
+        - name: size
+          in: query
+          required: false
+          description: "결과 개수 (기본값: 10)"
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+        - name: from
+          in: query
+          required: false
+          description: "시작 인덱스 (기본값: 0)"
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: 검색 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResponse'
+        '400':
+          description: 잘못된 요청
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: 서버 오류
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /languages:
+    get:
+      summary: Get Supported Languages
+      description: 지원되는 언어 목록을 반환합니다
+      tags:
+        - Utilities
+      security: []
+      responses:
+        '200':
+          description: 지원 언어 목록
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  languages:
+                    type: array
+                    items:
+                      type: string
+                    example: ["ko", "en", "ja", "zh", "es", "fr", "de", "ru"]
+
+  # External Agent APIs (Read-only)
+  /api/v1/external/articles:
+    get:
+      summary: List Articles (External)
+      description: 외부 에이전트가 아티클 목록을 조회합니다 (읽기 전용)
+      tags:
+        - External APIs
+      security: []
+      parameters:
+        - name: lang
+          in: query
+          required: false
+          description: "언어 코드 필터 (ko, en, ja, zh, es, fr, de, ru)"
+          schema:
+            type: string
+        - name: author
+          in: query
+          required: false
+          description: "저자 필터"
+          schema:
+            type: string
+        - name: size
+          in: query
+          required: false
+          description: "결과 개수 (기본값: 20, 최대: 100)"
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: from
+          in: query
+          required: false
+          description: "시작 인덱스 (기본값: 0)"
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: 아티클 목록 조회 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  articles:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SearchResult'
+                  total:
+                    type: integer
+                    description: 전체 아티클 수
+                    example: 150
+                  took:
+                    type: integer
+                    description: "검색 소요 시간 (밀리초)"
+                    example: 45
+                  from:
+                    type: integer
+                    description: 시작 인덱스
+                    example: 0
+                  size:
+                    type: integer
+                    description: 반환된 결과 수
+                    example: 20
+
+  /api/v1/external/articles/{id}:
+    get:
+      summary: Get Article Details (External)
+      description: 외부 에이전트가 특정 아티클의 상세 정보를 조회합니다 (읽기 전용)
+      tags:
+        - External APIs
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 아티클 ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 아티클 상세 정보 조회 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Article'
+        '404':
+          description: 아티클을 찾을 수 없음
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/external/search:
+    get:
+      summary: Search Articles (External)
+      description: 외부 에이전트가 아티클을 검색합니다 (AI 답변 생성 없음, 검색 결과만 반환)
+      tags:
+        - External APIs
+      security: []
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: 검색 쿼리
+          schema:
+            type: string
+        - name: size
+          in: query
+          required: false
+          description: "결과 개수 (기본값: 10, 최대: 50)"
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+        - name: from
+          in: query
+          required: false
+          description: "시작 인덱스 (기본값: 0)"
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: 검색 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  query:
+                    type: string
+                    description: 검색 쿼리
+                    example: "AI 마케팅 전략"
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SearchResultWithScore'
+                  total:
+                    type: integer
+                    description: 전체 검색 결과 수
+                    example: 25
+                  took:
+                    type: integer
+                    description: "검색 소요 시간 (밀리초)"
+                    example: 123
+
+  /api/v1/external/search/keyword:
+    get:
+      summary: Keyword Search (External)
+      description: 외부 에이전트가 키워드 기반 검색을 수행합니다 (읽기 전용)
+      tags:
+        - External APIs
+      security: []
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: 검색 쿼리
+          schema:
+            type: string
+        - name: lang
+          in: query
+          required: false
+          description: "언어 코드 (ko, en, ja, zh, es, fr, de, ru)"
+          schema:
+            type: string
+        - name: size
+          in: query
+          required: false
+          description: "결과 개수 (기본값: 10, 최대: 50)"
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+        - name: from
+          in: query
+          required: false
+          description: "시작 인덱스 (기본값: 0)"
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: 키워드 검색 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResponse'
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+
+  schemas:
+    ArticleRequest:
+      type: object
+      required:
+        - title
+        - content
+      properties:
+        title:
+          type: string
+          description: 아티클 제목
+          example: "퍼포먼스 마케팅의 모든 것"
+        content:
+          type: string
+          description: "퍼포먼스 마케팅이란 디지털 환경에서 사용자의 행동을 측정하고 분석하여..."
+        original_url:
+          type: string
+          format: uri
+          description: "원본 URL (선택사항)"
+          example: "https://example.blog/performance-marketing"
+        author:
+          type: string
+          description: "작성자 (선택사항)"
+          example: "김민준"
+        created_date:
+          type: string
+          format: date-time
+          description: "작성일 (선택사항, RFC3339 형식, 예: 2023-12-25T15:30:00Z. 미제공시 현재 시간으로 설정)"
+          example: "2023-12-25T15:30:00Z"
+
+    ArticleResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          description: 생성된 아티클 ID
+          example: "aBcDeFg12345XyZ"
+        message:
+          type: string
+          example: "Article indexed successfully"
+
+    Article:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "aBcDeFg12345XyZ"
+        lang:
+          type: string
+          example: "ko"
+        title:
+          type: string
+          example: "퍼포먼스 마케팅의 모든 것"
+        summary:
+          type: string
+          example: "퍼포먼스 마케팅의 핵심 개념과 실무 적용 방법에 대한 종합적인 가이드"
+        content:
+          type: string
+          example: "퍼포먼스 마케팅이란 디지털 환경에서..."
+        tags:
+          type: array
+          items:
+            type: string
+          example: ["마케팅", "디지털마케팅", "퍼포먼스"]
+        original_url:
+          type: string
+          example: "https://example.blog/performance-marketing"
+        author:
+          type: string
+          example: "김민준"
+        created_date:
+          type: string
+          format: date-time
+
+    SearchRequest:
+      type: object
+      required:
+        - query
+      properties:
+        query:
+          type: string
+          description: 검색 질문
+          example: "초보자를 위한 퍼포먼스 마케팅 성공 사례 알려줘"
+        lang:
+          type: string
+          description: "언어 코드 (선택사항)"
+          example: "ko"
+        size:
+          type: integer
+          description: "결과 개수 (기본값: 10)"
+          minimum: 1
+          maximum: 100
+          default: 10
+        from:
+          type: integer
+          description: "시작 인덱스 (기본값: 0)"
+          minimum: 0
+          default: 0
+
+    SearchResponse:
+      type: object
+      properties:
+        answer:
+          type: string
+          description: LLM이 생성한 답변
+          example: "초보자를 위한 퍼포먼스 마케팅 성공 사례로는..."
+        sources:
+          type: array
+          items:
+            $ref: '#/components/schemas/SearchResult'
+        total:
+          type: integer
+          description: 전체 검색 결과 수
+          example: 25
+        took:
+          type: integer
+          description: "검색 소요 시간 (밀리초)"
+          example: 123
+
+    SearchResult:
+      allOf:
+        - $ref: '#/components/schemas/Article'
+        - type: object
+          properties:
+            score:
+              type: number
+              format: float
+              description: 검색 점수
+              example: 1.2345
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: 오류 코드
+          example: "invalid_json"
+        message:
+          type: string
+          description: 오류 메시지
+          example: "Invalid JSON format"
+
+tags:
+  - name: Health
+    description: 서버 상태 확인
+  - name: Articles
+    description: 아티클 관리
+  - name: Search
+    description: 검색 기능
+  - name: Utilities
+    description: 유틸리티 기능
+  - name: External APIs
+    description: 외부 에이전트를 위한 API
