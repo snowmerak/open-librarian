@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -11,6 +10,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/snowmerak/open-librarian/lib/client/opensearch"
 	"github.com/snowmerak/open-librarian/lib/client/qdrant"
+	"github.com/snowmerak/open-librarian/lib/util/logger"
 )
 
 // WebSocket 업그레이더
@@ -23,23 +23,25 @@ var upgrader = websocket.Upgrader{
 // WebSocketSearchHandler handles WebSocket search requests
 func (h *HTTPServer) WebSocketSearchHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	log := logger.NewLoggerWithContext(ctx, "websocket_search").Start()
+	defer log.End()
 
 	// WebSocket 업그레이드
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Printf("WebSocket upgrade failed: %v", err)
+		log.Error().Err(err).Msg("WebSocket upgrade failed")
 		return
 	}
 	defer conn.Close()
 
-	log.Println("WebSocket connection established")
+	log.Info().Msg("WebSocket connection established")
 
 	// 메시지 수신 대기
 	for {
 		var req SearchRequest
 		err := conn.ReadJSON(&req)
 		if err != nil {
-			log.Printf("Error reading WebSocket message: %v", err)
+			log.Error().Err(err).Msg("Error reading WebSocket message")
 			break
 		}
 
@@ -52,7 +54,9 @@ func (h *HTTPServer) WebSocketSearchHandler(w http.ResponseWriter, r *http.Reque
 			continue
 		}
 
-		log.Printf("Received search query: %s", req.Query)
+		searchLog := logger.NewLoggerWithContext(ctx, "search_request").
+			WithField("query", req.Query).
+			Start()
 
 		// 검색 시작 알림
 		conn.WriteJSON(WSMessage{
@@ -62,10 +66,12 @@ func (h *HTTPServer) WebSocketSearchHandler(w http.ResponseWriter, r *http.Reque
 
 		// 1. 언어 감지
 		queryLang := h.server.languageDetector.DetectLanguage(req.Query)
+		searchLog.Info().Str("detected_language", queryLang).Msg("Language detected")
 
 		// 2. 쿼리 임베딩 생성
 		queryEmbedding, err := h.server.ollamaClient.GenerateEmbedding(ctx, "query: "+req.Query)
 		if err != nil {
+			searchLog.Error().Err(err).Msg("Failed to generate query embedding")
 			conn.WriteJSON(WSMessage{
 				Type: "error",
 				Data: fmt.Sprintf("Failed to generate query embedding: %v", err),
@@ -88,7 +94,7 @@ func (h *HTTPServer) WebSocketSearchHandler(w http.ResponseWriter, r *http.Reque
 		// 4a. Qdrant 벡터 검색
 		allVectorResults, err := h.server.qdrantClient.VectorSearch(ctx, queryEmbedding, uint64(size*4), queryLang)
 		if err != nil {
-			log.Printf("Vector search failed: %v", err)
+			searchLog.Error().Err(err).Msg("Vector search failed")
 			allVectorResults = []qdrant.VectorSearchResult{}
 		}
 
@@ -108,7 +114,7 @@ func (h *HTTPServer) WebSocketSearchHandler(w http.ResponseWriter, r *http.Reque
 		// 4b. OpenSearch 키워드 검색
 		keywordResp, err := h.server.opensearchClient.KeywordSearch(ctx, req.Query, queryLang, size*2, req.From)
 		if err != nil {
-			log.Printf("Keyword search failed: %v", err)
+			searchLog.Error().Err(err).Msg("Keyword search failed")
 			keywordResp = &opensearch.SearchResponse{Results: []opensearch.SearchResult{}}
 		}
 
@@ -127,7 +133,7 @@ func (h *HTTPServer) WebSocketSearchHandler(w http.ResponseWriter, r *http.Reque
 		if len(vectorArticleIDs) > 0 {
 			vectorArticles, err = h.server.opensearchClient.GetArticlesByIDs(ctx, vectorArticleIDs)
 			if err != nil {
-				log.Printf("Failed to get articles by IDs: %v", err)
+				searchLog.Error().Err(err).Msg("Failed to get articles by IDs")
 				vectorArticles = []opensearch.Article{}
 			}
 		}
@@ -138,10 +144,16 @@ func (h *HTTPServer) WebSocketSearchHandler(w http.ResponseWriter, r *http.Reque
 		// 6.5. LLM을 사용한 검색 관련성 검증
 		filteredResults, err := h.server.validateSearchRelevance(ctx, req.Query, combinedResults)
 		if err != nil {
-			log.Printf("Failed to validate search relevance: %v", err)
+			searchLog.Error().Err(err).Msg("Failed to validate search relevance")
 			// 검증 실패 시 원본 결과 사용
 			filteredResults = combinedResults
 		}
+
+		searchLog.Info().
+			Int("total_results", len(filteredResults)).
+			Int("vector_results", len(combinedVectorResults)).
+			Int("keyword_results", len(keywordResp.Results)).
+			Msg("Search results combined")
 
 		// 참조 소스 전송
 		conn.WriteJSON(WSMessage{
@@ -169,6 +181,7 @@ func (h *HTTPServer) WebSocketSearchHandler(w http.ResponseWriter, r *http.Reque
 		})
 
 		if err != nil {
+			searchLog.Error().Err(err).Msg("Failed to generate answer")
 			conn.WriteJSON(WSMessage{
 				Type: "error",
 				Data: fmt.Sprintf("Failed to generate answer: %v", err),
@@ -181,12 +194,16 @@ func (h *HTTPServer) WebSocketSearchHandler(w http.ResponseWriter, r *http.Reque
 			Type: "done",
 			Data: "검색이 완료되었습니다.",
 		})
+
+		searchLog.EndWithMsg("Search request completed successfully")
 	}
 }
 
 // WebSocketAddArticleHandler handles WebSocket article addition requests with progress updates
 func (h *HTTPServer) WebSocketAddArticleHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	log := logger.NewLoggerWithContext(ctx, "websocket_add_article").Start()
+	defer log.End()
 
 	// Check for authentication - first try Authorization header, then query parameter
 	var tokenString string
@@ -200,6 +217,7 @@ func (h *HTTPServer) WebSocketAddArticleHandler(w http.ResponseWriter, r *http.R
 	}
 
 	if tokenString == "" {
+		log.Error().Msg("Authorization required")
 		http.Error(w, "Authorization required (header or query parameter)", http.StatusUnauthorized)
 		return
 	}
@@ -207,6 +225,7 @@ func (h *HTTPServer) WebSocketAddArticleHandler(w http.ResponseWriter, r *http.R
 	// Validate token
 	claims, err := h.server.jwtService.ValidateToken(tokenString)
 	if err != nil {
+		log.Error().Err(err).Msg("Invalid token")
 		http.Error(w, "Invalid token", http.StatusUnauthorized)
 		return
 	}
@@ -214,6 +233,7 @@ func (h *HTTPServer) WebSocketAddArticleHandler(w http.ResponseWriter, r *http.R
 	// Get user from database
 	user, err := h.server.mongoClient.GetUserFromToken(ctx, tokenString, h.server.jwtService)
 	if err != nil {
+		log.Error().Err(err).Msg("User not found")
 		http.Error(w, "User not found", http.StatusUnauthorized)
 		return
 	}
@@ -225,19 +245,19 @@ func (h *HTTPServer) WebSocketAddArticleHandler(w http.ResponseWriter, r *http.R
 	// WebSocket upgrade
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Printf("WebSocket upgrade failed: %v", err)
+		log.Error().Err(err).Msg("WebSocket upgrade failed")
 		return
 	}
 	defer conn.Close()
 
-	log.Printf("WebSocket connection established for article addition by user: %s", user.Username)
+	log.Info().Str("username", user.Username).Msg("WebSocket connection established for article addition")
 
 	// Wait for incoming messages
 	for {
 		var req ArticleRequest
 		err := conn.ReadJSON(&req)
 		if err != nil {
-			log.Printf("Error reading WebSocket message: %v", err)
+			log.Error().Err(err).Msg("Error reading WebSocket message")
 			break
 		}
 
@@ -268,7 +288,11 @@ func (h *HTTPServer) WebSocketAddArticleHandler(w http.ResponseWriter, r *http.R
 			}
 		}
 
-		log.Printf("Received article addition request: %s", req.Title)
+		articleLog := logger.NewLoggerWithContext(ctx, "add_article").
+			WithFields(map[string]interface{}{
+				"title":    req.Title,
+				"username": user.Username,
+			}).Start()
 
 		// Define progress callback
 		progressCallback := func(step string, progress int, total int) error {
@@ -292,13 +316,17 @@ func (h *HTTPServer) WebSocketAddArticleHandler(w http.ResponseWriter, r *http.R
 		// Call AddArticleWithProgress with WebSocket progress updates
 		resp, err := h.server.AddArticleWithProgress(ctx, &req, progressCallback)
 		if err != nil {
-			log.Printf("Error adding article: %v", err)
+			articleLog.Error().Err(err).Msg("Error adding article")
 			conn.WriteJSON(WSMessage{
 				Type: "error",
 				Data: fmt.Sprintf("Failed to process article: %v", err),
 			})
 			continue
 		}
+
+		articleLog.DataCreated("article", resp.ID, map[string]interface{}{
+			"title": req.Title,
+		})
 
 		// Send success response
 		conn.WriteJSON(WSMessage{
@@ -311,12 +339,16 @@ func (h *HTTPServer) WebSocketAddArticleHandler(w http.ResponseWriter, r *http.R
 			Type: "done",
 			Data: "Article has been successfully added",
 		})
+
+		articleLog.EndWithMsg("Article addition completed successfully")
 	}
 }
 
 // WebSocketBulkAddArticleHandler handles WebSocket bulk article addition requests with progress updates
 func (h *HTTPServer) WebSocketBulkAddArticleHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	log := logger.NewLoggerWithContext(ctx, "websocket_bulk_add_article").Start()
+	defer log.End()
 
 	// Check for authentication - first try Authorization header, then query parameter
 	var tokenString string
@@ -330,6 +362,7 @@ func (h *HTTPServer) WebSocketBulkAddArticleHandler(w http.ResponseWriter, r *ht
 	}
 
 	if tokenString == "" {
+		log.Error().Msg("Authorization required")
 		http.Error(w, "Authorization required (header or query parameter)", http.StatusUnauthorized)
 		return
 	}
@@ -337,6 +370,7 @@ func (h *HTTPServer) WebSocketBulkAddArticleHandler(w http.ResponseWriter, r *ht
 	// Validate token
 	claims, err := h.server.jwtService.ValidateToken(tokenString)
 	if err != nil {
+		log.Error().Err(err).Msg("Invalid token")
 		http.Error(w, "Invalid token", http.StatusUnauthorized)
 		return
 	}
@@ -344,6 +378,7 @@ func (h *HTTPServer) WebSocketBulkAddArticleHandler(w http.ResponseWriter, r *ht
 	// Get user from database
 	user, err := h.server.mongoClient.GetUserFromToken(ctx, tokenString, h.server.jwtService)
 	if err != nil {
+		log.Error().Err(err).Msg("User not found")
 		http.Error(w, "User not found", http.StatusUnauthorized)
 		return
 	}
@@ -355,19 +390,19 @@ func (h *HTTPServer) WebSocketBulkAddArticleHandler(w http.ResponseWriter, r *ht
 	// WebSocket upgrade
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Printf("WebSocket upgrade failed: %v", err)
+		log.Error().Err(err).Msg("WebSocket upgrade failed")
 		return
 	}
 	defer conn.Close()
 
-	log.Printf("WebSocket connection established for bulk article addition by user: %s", user.Username)
+	log.Info().Str("username", user.Username).Msg("WebSocket connection established for bulk article addition")
 
 	// Wait for incoming messages
 	for {
 		var req BulkArticleRequest
 		err := conn.ReadJSON(&req)
 		if err != nil {
-			log.Printf("Error reading WebSocket message: %v", err)
+			log.Error().Err(err).Msg("Error reading WebSocket message")
 			break
 		}
 
@@ -380,7 +415,11 @@ func (h *HTTPServer) WebSocketBulkAddArticleHandler(w http.ResponseWriter, r *ht
 			continue
 		}
 
-		log.Printf("Received bulk article addition request: %d articles", len(req.Articles))
+		bulkLog := logger.NewLoggerWithContext(ctx, "bulk_add_articles").
+			WithFields(map[string]interface{}{
+				"article_count": len(req.Articles),
+				"username":      user.Username,
+			}).Start()
 
 		// Define bulk progress callback
 		bulkProgressCallback := func(articleIndex int, totalArticles int, currentStep string, stepProgress int, stepTotal int, result *BulkArticleResult) error {
@@ -417,13 +456,18 @@ func (h *HTTPServer) WebSocketBulkAddArticleHandler(w http.ResponseWriter, r *ht
 		// Call AddArticlesBulkWithProgress with WebSocket progress updates
 		resp, err := h.server.AddArticlesBulkWithProgress(ctx, &req, bulkProgressCallback)
 		if err != nil {
-			log.Printf("Error in bulk article addition: %v", err)
+			bulkLog.Error().Err(err).Msg("Error in bulk article addition")
 			conn.WriteJSON(WSMessage{
 				Type: "error",
 				Data: fmt.Sprintf("Failed to process articles: %v", err),
 			})
 			continue
 		}
+
+		bulkLog.Info().
+			Int("success_count", resp.SuccessCount).
+			Int("error_count", resp.ErrorCount).
+			Msg("Bulk article addition completed")
 
 		// Send success response
 		conn.WriteJSON(WSMessage{
@@ -436,5 +480,7 @@ func (h *HTTPServer) WebSocketBulkAddArticleHandler(w http.ResponseWriter, r *ht
 			Type: "done",
 			Data: fmt.Sprintf("Bulk upload completed: %d successful, %d failed", resp.SuccessCount, resp.ErrorCount),
 		})
+
+		bulkLog.EndWithMsg("Bulk article addition completed successfully")
 	}
 }

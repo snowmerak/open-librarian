@@ -6,6 +6,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/snowmerak/open-librarian/lib/client/mongo"
+	"github.com/snowmerak/open-librarian/lib/util/logger"
 	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
@@ -39,27 +40,55 @@ func (s *Server) RegisterUserRoutes(r chi.Router) {
 
 // createUserHandler handles user creation
 func (s *Server) createUserHandler(w http.ResponseWriter, r *http.Request) {
+	userLogger := logger.NewLogger("create_user").StartWithMsg("Creating new user")
+
 	var req mongo.CreateUserRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		userLogger.Error().Err(err).Msg("Invalid request body")
+		userLogger.EndWithError(err)
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
 	// Validate required fields
 	if req.Email == "" || req.Username == "" || req.Password == "" {
+		userLogger.Error().
+			Str("email", req.Email).
+			Str("username", req.Username).
+			Bool("password_empty", req.Password == "").
+			Msg("Missing required fields")
+		userLogger.EndWithError(nil)
 		http.Error(w, "Email, username, and password are required", http.StatusBadRequest)
 		return
 	}
 
+	userLogger.Info().
+		Str("email", req.Email).
+		Str("username", req.Username).
+		Msg("Creating user with valid request")
+
 	user, err := s.mongoClient.CreateUser(r.Context(), req)
 	if err != nil {
 		if err.Error() == "user with this email or username already exists" {
+			userLogger.Warn().
+				Str("email", req.Email).
+				Str("username", req.Username).
+				Msg("User already exists")
+			userLogger.EndWithError(err)
 			http.Error(w, err.Error(), http.StatusConflict)
 			return
 		}
+		userLogger.Error().Err(err).Msg("Failed to create user")
+		userLogger.EndWithError(err)
 		http.Error(w, "Failed to create user", http.StatusInternalServerError)
 		return
 	}
+
+	userLogger.DataCreated("user", user.ID.Hex(), map[string]interface{}{
+		"email":    user.Email,
+		"username": user.Username,
+	})
+	userLogger.EndWithMsg("User created successfully")
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
@@ -68,27 +97,48 @@ func (s *Server) createUserHandler(w http.ResponseWriter, r *http.Request) {
 
 // authenticateUserHandler handles user authentication and returns JWT token
 func (s *Server) authenticateUserHandler(w http.ResponseWriter, r *http.Request) {
+	authLogger := logger.NewLogger("authenticate_user").StartWithMsg("Authenticating user")
+
 	var credentials mongo.UserCredentials
 	if err := json.NewDecoder(r.Body).Decode(&credentials); err != nil {
+		authLogger.Error().Err(err).Msg("Invalid request body")
+		authLogger.EndWithError(err)
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
 	// Validate required fields
 	if credentials.Email == "" || credentials.Password == "" {
+		authLogger.Error().
+			Str("email", credentials.Email).
+			Bool("password_empty", credentials.Password == "").
+			Msg("Missing required credentials")
+		authLogger.EndWithError(nil)
 		http.Error(w, "Email and password are required", http.StatusBadRequest)
 		return
 	}
 
+	authLogger.Info().Str("email", credentials.Email).Msg("Attempting authentication")
+
 	authResponse, err := s.mongoClient.AuthenticateUserWithToken(r.Context(), credentials, s.jwtService)
 	if err != nil {
 		if err.Error() == "invalid email or password" {
+			authLogger.Warn().Str("email", credentials.Email).Msg("Authentication failed - invalid credentials")
+			authLogger.EndWithError(err)
 			http.Error(w, err.Error(), http.StatusUnauthorized)
 			return
 		}
+		authLogger.Error().Err(err).Str("email", credentials.Email).Msg("Authentication failed")
+		authLogger.EndWithError(err)
 		http.Error(w, "Authentication failed", http.StatusInternalServerError)
 		return
 	}
+
+	authLogger.Info().
+		Str("email", credentials.Email).
+		Str("user_id", authResponse.User.ID.Hex()).
+		Msg("User authenticated successfully")
+	authLogger.EndWithMsg("Authentication complete")
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(authResponse)

@@ -6,12 +6,18 @@ import (
 	"log"
 
 	"github.com/snowmerak/open-librarian/lib/client/opensearch"
+	"github.com/snowmerak/open-librarian/lib/util/logger"
 )
 
 // generateAnswer creates an AI-powered answer based on search results
 func (s *Server) generateAnswer(ctx context.Context, query string, articles []opensearch.Article) (string, error) {
+	answerLogger := logger.NewLogger("generate-answer")
+	answerLogger.StartWithMsg("Generating AI-powered answer")
+	answerLogger.Info().Str("query", query).Int("article_count", len(articles)).Msg("Answer generation request")
+
 	// Detect query language to generate appropriate response
 	queryLang := s.languageDetector.DetectLanguage(query)
+	answerLogger.Info().Str("detected_language", queryLang).Msg("Query language detected")
 
 	// Prepare language-specific response templates
 	var noResultsMessage, contextIntro, promptTemplate string
@@ -243,23 +249,34 @@ Answer (Markdown format):`
 	prompt := ""
 	switch len(articles) {
 	case 0:
+		answerLogger.Info().Msg("No articles found, generating answer from general knowledge")
 		prompt = fmt.Sprintf(noResultsMessage, query)
 	default:
+		answerLogger.Info().Int("context_length", len(context)).Msg("Using articles context for answer generation")
 		prompt = fmt.Sprintf(promptTemplate, query, context)
 	}
 
+	answerLogger.Info().Msg("Sending prompt to Ollama for answer generation")
 	answer, err := s.ollamaClient.GenerateText(ctx, prompt)
 	if err != nil {
+		answerLogger.EndWithError(fmt.Errorf("failed to generate answer: %w", err))
 		return "", fmt.Errorf("failed to generate answer: %w", err)
 	}
 
+	answerLogger.Info().Int("answer_length", len(answer)).Msg("Answer generated successfully")
+	answerLogger.EndWithMsg("Answer generation completed")
 	return answer, nil
 }
 
 // generateAnswerStream creates an AI-powered answer based on search results using streaming
 func (s *Server) generateAnswerStream(ctx context.Context, query string, articles []opensearch.Article, callback func(string) error) error {
+	streamLogger := logger.NewLogger("generate-answer-stream")
+	streamLogger.StartWithMsg("Generating AI-powered answer with streaming")
+	streamLogger.Info().Str("query", query).Int("article_count", len(articles)).Msg("Stream answer generation request")
+
 	// Detect query language to generate appropriate response
 	queryLang := s.languageDetector.DetectLanguage(query)
+	streamLogger.Info().Str("detected_language", queryLang).Msg("Query language detected")
 
 	// Prepare language-specific response templates
 	var noResultsMessage, contextIntro, promptTemplate string

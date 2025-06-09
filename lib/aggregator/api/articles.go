@@ -8,38 +8,48 @@ import (
 
 	"github.com/snowmerak/open-librarian/lib/client/mongo"
 	"github.com/snowmerak/open-librarian/lib/client/opensearch"
+	"github.com/snowmerak/open-librarian/lib/util/logger"
 )
 
 // AddArticle processes and indexes a new article
 func (s *Server) AddArticle(ctx context.Context, req *ArticleRequest) (*ArticleResponse, error) {
-	log.Printf("Processing article: %s", req.Title)
+	articleLogger := logger.NewLogger("add_article").StartWithMsg("Processing new article")
+	articleLogger.Info().Str("title", req.Title).Int("content_length", len(req.Content)).Msg("Article processing started")
 
 	// Extract user information from context
 	var registrar string
 	if user, ok := ctx.Value(UserContextKey).(*mongo.User); ok {
 		registrar = user.Username
-		log.Printf("Article being registered by user: %s", registrar)
+		articleLogger.Info().Str("registrar", registrar).Msg("Article being registered by user")
 	} else {
-		log.Printf("No user context found - this should not happen for authenticated endpoints")
+		articleLogger.Error().Msg("No user context found - authentication required")
+		articleLogger.EndWithError(fmt.Errorf("authentication required"))
 		return nil, fmt.Errorf("authentication required")
 	}
 
 	// 1. Check for duplicate articles based on title and content similarity
+	dupCheckLogger := logger.NewLogger("duplicate_check").StartWithMsg("Checking for duplicate articles")
 	isDuplicate, existingID, err := s.checkDuplicateArticle(ctx, req.Title, req.Content)
 	if err != nil {
-		log.Printf("Failed to check for duplicates: %v", err)
-		// Continue with indexing despite duplicate check failure
+		dupCheckLogger.Warn().Err(err).Msg("Failed to check for duplicates, continuing with indexing")
+		dupCheckLogger.EndWithError(err)
 	} else if isDuplicate {
-		log.Printf("Duplicate article detected, existing ID: %s", existingID)
+		dupCheckLogger.Info().Str("existing_id", existingID).Msg("Duplicate article detected")
+		dupCheckLogger.EndWithMsg("Duplicate check complete - duplicate found")
+		articleLogger.EndWithMsg("Article processing complete - duplicate found")
 		return &ArticleResponse{
 			ID:      existingID,
 			Message: "Duplicate article found, returning existing article ID",
 		}, nil
+	} else {
+		dupCheckLogger.EndWithMsg("Duplicate check complete - no duplicates found")
 	}
 
 	// 2. Detect language
+	langLogger := logger.NewLogger("language_detection").StartWithMsg("Detecting article language")
 	lang := s.languageDetector.DetectLanguage(req.Content)
-	log.Printf("Detected language: %s", lang)
+	langLogger.Info().Str("detected_language", lang).Msg("Language detection complete")
+	langLogger.EndWithMsg("Language detection complete")
 
 	// 3. Generate summary using Ollama
 	summaryPrompt := fmt.Sprintf(`Please create a comprehensive and detailed summary of the following text in English. You can write up to 8000 characters if needed to capture all important information.

@@ -11,21 +11,33 @@ import (
 
 	"github.com/snowmerak/open-librarian/lib/client/opensearch"
 	"github.com/snowmerak/open-librarian/lib/client/qdrant"
+	"github.com/snowmerak/open-librarian/lib/util/logger"
 )
 
 // Search performs hybrid search combining vector and keyword search
 func (s *Server) Search(ctx context.Context, req *SearchRequest) (*SearchResponse, error) {
-	// Remove unnecessary log
-	// log.Printf("Searching for: %s", req.Query)
+	searchLogger := logger.NewLogger("search").StartWithMsg("Performing hybrid search")
+	searchLogger.Info().
+		Str("query", req.Query).
+		Int("requested_size", req.Size).
+		Msg("Starting search operation")
 
 	// 1. Detect query language
+	langLogger := logger.NewLogger("query_language_detection").StartWithMsg("Detecting query language")
 	queryLang := s.languageDetector.DetectLanguage(req.Query)
+	langLogger.Info().Str("detected_language", queryLang).Msg("Query language detected")
+	langLogger.EndWithMsg("Query language detection complete")
 
 	// 2. Generate query embedding for vector search
+	embeddingLogger := logger.NewLogger("query_embedding").StartWithMsg("Generating query embedding")
 	queryEmbedding, err := s.ollamaClient.GenerateEmbedding(ctx, "query: "+req.Query)
 	if err != nil {
+		embeddingLogger.EndWithError(err)
+		searchLogger.EndWithError(err)
 		return nil, fmt.Errorf("failed to generate query embedding: %w", err)
 	}
+	embeddingLogger.Info().Int("embedding_size", len(queryEmbedding)).Msg("Query embedding generated")
+	embeddingLogger.EndWithMsg("Query embedding generation complete")
 
 	// 3. Set default size if not provided
 	size := req.Size
@@ -35,14 +47,22 @@ func (s *Server) Search(ctx context.Context, req *SearchRequest) (*SearchRespons
 
 	// Calculate expanded search size (2x the requested size for each search)
 	expandedSize := size * 2
+	searchLogger.Info().
+		Int("final_size", size).
+		Int("expanded_size", expandedSize).
+		Msg("Search parameters configured")
 
 	// 4. Perform parallel searches
 	// 4a. Vector search with Qdrant (search both title and summary embeddings)
-	// Request expandedSize * 2 to account for title and summary results that will be combined
+	vectorLogger := logger.NewLogger("vector_search").StartWithMsg("Performing vector search")
 	allVectorResults, err := s.qdrantClient.VectorSearch(ctx, queryEmbedding, uint64(expandedSize*2), queryLang)
 	if err != nil {
-		log.Printf("Vector search failed: %v", err)
+		vectorLogger.Warn().Err(err).Msg("Vector search failed, continuing with empty results")
+		vectorLogger.EndWithError(err)
 		allVectorResults = []qdrant.VectorSearchResult{}
+	} else {
+		vectorLogger.Info().Int("total_results", len(allVectorResults)).Msg("Vector search completed")
+		vectorLogger.EndWithMsg("Vector search complete")
 	}
 
 	// Separate title and summary results and log vector search scores

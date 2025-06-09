@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/snowmerak/open-librarian/lib/client/mongo"
+	"github.com/snowmerak/open-librarian/lib/util/logger"
 )
 
 // ContextKey is a type for context keys
@@ -22,15 +23,23 @@ const (
 func (s *Server) JWTMiddleware(jwtService *mongo.JWTService) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			authLogger := logger.NewLogger("jwt-middleware")
+			authLogger.StartWithMsg("Processing JWT authentication")
+			authLogger.Info().Str("method", r.Method).Str("path", r.URL.Path).Msg("Authentication request")
+
 			// Get token from Authorization header
 			authHeader := r.Header.Get("Authorization")
 			if authHeader == "" {
+				authLogger.Error().Msg("Authorization header missing")
+				authLogger.EndWithError(nil)
 				http.Error(w, "Authorization header required", http.StatusUnauthorized)
 				return
 			}
 
 			// Check if header starts with "Bearer "
 			if !strings.HasPrefix(authHeader, "Bearer ") {
+				authLogger.Error().Msg("Invalid authorization header format")
+				authLogger.EndWithError(nil)
 				http.Error(w, "Authorization header must start with 'Bearer '", http.StatusUnauthorized)
 				return
 			}
@@ -38,6 +47,8 @@ func (s *Server) JWTMiddleware(jwtService *mongo.JWTService) func(http.Handler) 
 			// Extract token
 			tokenString := strings.TrimPrefix(authHeader, "Bearer ")
 			if tokenString == "" {
+				authLogger.Error().Msg("Empty token")
+				authLogger.EndWithError(nil)
 				http.Error(w, "Token required", http.StatusUnauthorized)
 				return
 			}
@@ -45,6 +56,8 @@ func (s *Server) JWTMiddleware(jwtService *mongo.JWTService) func(http.Handler) 
 			// Validate token
 			claims, err := jwtService.ValidateToken(tokenString)
 			if err != nil {
+				authLogger.Error().Err(err).Msg("Token validation failed")
+				authLogger.EndWithError(err)
 				http.Error(w, "Invalid token", http.StatusUnauthorized)
 				return
 			}

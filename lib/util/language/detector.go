@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/pemistahl/lingua-go"
+	"github.com/snowmerak/open-librarian/lib/util/logger"
 )
 
 // Detector provides language detection functionality
@@ -38,13 +39,21 @@ func NewDetector() *Detector {
 // Returns language code (ko, en, ja, zh, es, fr, de, ru) or "en" as default
 // Always returns "en" (English) when language cannot be determined
 func (d *Detector) DetectLanguage(text string) string {
+	langLogger := logger.NewLogger("language-detection")
+	langLogger.StartWithMsg("Detecting language of text")
+	langLogger.Info().Int("text_length", len(text)).Msg("Language detection request")
+
 	if text == "" {
+		langLogger.Info().Str("result", "en").Msg("Empty text, using default language")
+		langLogger.EndWithMsg("Language detection completed")
 		return "en" // Default to English for empty text
 	}
 
 	// Clean text for analysis
 	cleanText := strings.TrimSpace(text)
 	if len(cleanText) < 10 {
+		langLogger.Info().Str("result", "en").Msg("Short text, using default language")
+		langLogger.EndWithMsg("Language detection completed")
 		return "en" // Default to English for very short texts
 	}
 
@@ -53,11 +62,15 @@ func (d *Detector) DetectLanguage(text string) string {
 		detectedCode := d.mapLanguageToCode(language)
 		// Ensure we return a valid language code, default to English if not supported
 		if detectedCode != "" {
+			langLogger.Info().Str("detected_language", detectedCode).Msg("Language detected successfully")
+			langLogger.EndWithMsg("Language detection completed")
 			return detectedCode
 		}
 	}
 
 	// Always default to English if detection fails or returns unsupported language
+	langLogger.Info().Str("result", "en").Msg("Detection failed, using default language")
+	langLogger.EndWithMsg("Language detection completed")
 	return "en"
 }
 

@@ -7,6 +7,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/snowmerak/open-librarian/lib/util/logger"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
@@ -95,6 +96,9 @@ func VerifyPassword(password, encodedHash, encodedSalt string) (bool, error) {
 
 // CreateUser creates a new user in the database
 func (c *Client) CreateUser(ctx context.Context, req CreateUserRequest) (*User, error) {
+	userLogger := logger.NewLogger("mongo_create_user").StartWithMsg("Creating user in database")
+	userLogger.Info().Str("email", req.Email).Str("username", req.Username).Msg("Creating new user")
+
 	collection := c.client.Database("open_librarian").Collection("users")
 
 	// Check if user already exists
@@ -105,15 +109,20 @@ func (c *Client) CreateUser(ctx context.Context, req CreateUserRequest) (*User, 
 	}}).Decode(&existingUser)
 
 	if err == nil {
+		userLogger.Warn().Str("email", req.Email).Str("username", req.Username).Msg("User already exists")
+		userLogger.EndWithError(errors.New("user with this email or username already exists"))
 		return nil, errors.New("user with this email or username already exists")
 	}
 	if !errors.Is(err, mongo.ErrNoDocuments) {
+		userLogger.EndWithError(err)
 		return nil, err
 	}
 
 	// Hash password
 	passwordHash, salt, err := HashPassword(req.Password)
 	if err != nil {
+		userLogger.Error().Err(err).Msg("Failed to hash password")
+		userLogger.EndWithError(err)
 		return nil, err
 	}
 
@@ -129,10 +138,19 @@ func (c *Client) CreateUser(ctx context.Context, req CreateUserRequest) (*User, 
 
 	result, err := collection.InsertOne(ctx, user)
 	if err != nil {
+		userLogger.Error().Err(err).Msg("Failed to insert user into database")
+		userLogger.EndWithError(err)
 		return nil, err
 	}
 
 	user.ID = result.InsertedID.(bson.ObjectID)
+
+	userLogger.DataCreated("user", user.ID.Hex(), map[string]interface{}{
+		"email":    user.Email,
+		"username": user.Username,
+	})
+	userLogger.EndWithMsg("User created successfully in database")
+
 	return &user, nil
 }
 
@@ -212,6 +230,9 @@ func (c *Client) GetUserByEmail(ctx context.Context, email string) (*User, error
 
 // UpdateUser updates user information (except password)
 func (c *Client) UpdateUser(ctx context.Context, id bson.ObjectID, updates bson.M) error {
+	updateLogger := logger.NewLogger("mongo_update_user").StartWithMsg("Updating user in database")
+	updateLogger.Info().Str("user_id", id.Hex()).Interface("updates", updates).Msg("Updating user information")
+
 	collection := c.client.Database("open_librarian").Collection("users")
 
 	// Add updated_at field
@@ -224,13 +245,19 @@ func (c *Client) UpdateUser(ctx context.Context, id bson.ObjectID, updates bson.
 
 	result, err := collection.UpdateOne(ctx, bson.M{"_id": id}, bson.M{"$set": updates})
 	if err != nil {
+		updateLogger.Error().Err(err).Str("user_id", id.Hex()).Msg("Failed to update user")
+		updateLogger.EndWithError(err)
 		return err
 	}
 
 	if result.MatchedCount == 0 {
+		updateLogger.Warn().Str("user_id", id.Hex()).Msg("User not found for update")
+		updateLogger.EndWithError(errors.New("user not found"))
 		return errors.New("user not found")
 	}
 
+	updateLogger.DataUpdated("user", id.Hex(), updates)
+	updateLogger.EndWithMsg("User updated successfully in database")
 	return nil
 }
 
@@ -281,17 +308,26 @@ func (c *Client) ChangePassword(ctx context.Context, id bson.ObjectID, oldPasswo
 
 // DeleteUser deletes a user from the database
 func (c *Client) DeleteUser(ctx context.Context, id bson.ObjectID) error {
+	delLogger := logger.NewLogger("mongo_delete_user").StartWithMsg("Deleting user from database")
+	delLogger.Info().Str("user_id", id.Hex()).Msg("Attempting to delete user")
+
 	collection := c.client.Database("open_librarian").Collection("users")
 
 	result, err := collection.DeleteOne(ctx, bson.M{"_id": id})
 	if err != nil {
+		delLogger.Error().Err(err).Str("user_id", id.Hex()).Msg("Failed to delete user")
+		delLogger.EndWithError(err)
 		return err
 	}
 
 	if result.DeletedCount == 0 {
+		delLogger.Warn().Str("user_id", id.Hex()).Msg("User not found for deletion")
+		delLogger.EndWithError(errors.New("user not found"))
 		return errors.New("user not found")
 	}
 
+	delLogger.DataDeleted("user", id.Hex())
+	delLogger.EndWithMsg("User deleted successfully from database")
 	return nil
 }
 

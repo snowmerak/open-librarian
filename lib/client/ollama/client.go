@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/snowmerak/open-librarian/lib/util/logger"
 )
 
 type Client struct {
@@ -48,25 +50,49 @@ const (
 
 // NewClient creates a new Ollama client
 func NewClient(baseURL string) *Client {
+	logger := logger.NewLogger("ollama-client")
+	logger.StartWithMsg("Creating new Ollama client")
+
 	if baseURL == "" {
 		baseURL = DefaultBaseURL
+		logger.Info().Str("base_url", baseURL).Msg("Using default base URL")
+	} else {
+		logger.Info().Str("base_url", baseURL).Msg("Using provided base URL")
 	}
 
-	return &Client{
+	client := &Client{
 		baseURL: baseURL,
 		httpClient: &http.Client{
 			Timeout: 15 * time.Minute, // Increased timeout significantly
 		},
 	}
+
+	logger.EndWithMsg("Ollama client created successfully")
+	return client
 }
 
 // GenerateText generates text using the specified model (default: gemma2:14b)
 func (c *Client) GenerateText(ctx context.Context, prompt string) (string, error) {
-	return c.GenerateTextWithModel(ctx, DefaultTextModel, prompt)
+	logger := logger.NewLogger("ollama-generate-text")
+	logger.StartWithMsg("Generating text with default model")
+	logger.Info().Str("model", DefaultTextModel).Msg("Using default text model")
+
+	result, err := c.GenerateTextWithModel(ctx, DefaultTextModel, prompt)
+	if err != nil {
+		logger.EndWithError(err)
+		return "", err
+	}
+
+	logger.EndWithMsg("Text generation completed")
+	return result, nil
 }
 
 // GenerateTextWithModel generates text using a specific model
 func (c *Client) GenerateTextWithModel(ctx context.Context, model, prompt string) (string, error) {
+	logger := logger.NewLogger("ollama-generate-text-with-model")
+	logger.StartWithMsg("Generating text with specific model")
+	logger.Info().Str("model", model).Int("prompt_length", len(prompt)).Msg("Text generation request details")
+
 	// Add strict output formatting instructions to prevent LLM from adding commentary
 	strictPrompt := fmt.Sprintf(`You must respond ONLY with the requested content. Do not add any commentary, explanations, opinions, or meta-text. Do not prefix or suffix your response with any additional text.
 
@@ -82,32 +108,42 @@ Remember: Output ONLY the requested content, nothing else.`, prompt)
 
 	reqBody, err := json.Marshal(req)
 	if err != nil {
+		logger.EndWithError(fmt.Errorf("failed to marshal request: %w", err))
 		return "", fmt.Errorf("failed to marshal request: %w", err)
 	}
 
 	httpReq, err := http.NewRequest("POST", c.baseURL+"/api/generate", bytes.NewBuffer(reqBody))
 	if err != nil {
+		logger.EndWithError(fmt.Errorf("failed to create request: %w", err))
 		return "", fmt.Errorf("failed to create request: %w", err)
 	}
 
 	httpReq.Header.Set("Content-Type", "application/json")
+	logger.Info().Str("url", c.baseURL+"/api/generate").Msg("Sending request to Ollama API")
 
 	resp, err := c.httpClient.Do(httpReq)
 	if err != nil {
+		logger.EndWithError(fmt.Errorf("failed to send request: %w", err))
 		return "", fmt.Errorf("failed to send request: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(body))
+		err := fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(body))
+		logger.Error().Int("status_code", resp.StatusCode).Msg("API request failed")
+		logger.EndWithError(err)
+		return "", err
 	}
 
 	var genResp GenerateResponse
 	if err := json.NewDecoder(resp.Body).Decode(&genResp); err != nil {
+		logger.EndWithError(fmt.Errorf("failed to decode response: %w", err))
 		return "", fmt.Errorf("failed to decode response: %w", err)
 	}
 
+	logger.Info().Int("response_length", len(genResp.Response)).Msg("Text generation successful")
+	logger.EndWithMsg("Text generation completed successfully")
 	return genResp.Response, nil
 }
 
@@ -180,11 +216,26 @@ Remember: Output ONLY the requested content, nothing else.`, prompt)
 
 // GenerateEmbedding generates embeddings using the paraphrase-multilingual model
 func (c *Client) GenerateEmbedding(ctx context.Context, text string) ([]float64, error) {
-	return c.GenerateEmbeddingWithModel(ctx, DefaultEmbeddingModel, text)
+	logger := logger.NewLogger("ollama-generate-embedding")
+	logger.StartWithMsg("Generating embedding with default model")
+	logger.Info().Str("model", DefaultEmbeddingModel).Msg("Using default embedding model")
+
+	result, err := c.GenerateEmbeddingWithModel(ctx, DefaultEmbeddingModel, text)
+	if err != nil {
+		logger.EndWithError(err)
+		return nil, err
+	}
+
+	logger.EndWithMsg("Embedding generation completed")
+	return result, nil
 }
 
 // GenerateEmbeddingWithModel generates embeddings using a specific model
 func (c *Client) GenerateEmbeddingWithModel(ctx context.Context, model, text string) ([]float64, error) {
+	logger := logger.NewLogger("ollama-generate-embedding-with-model")
+	logger.StartWithMsg("Generating embedding with specific model")
+	logger.Info().Str("model", model).Int("text_length", len(text)).Msg("Embedding generation request details")
+
 	req := EmbedRequest{
 		Model: model,
 		Input: text,
@@ -192,56 +243,81 @@ func (c *Client) GenerateEmbeddingWithModel(ctx context.Context, model, text str
 
 	reqBody, err := json.Marshal(req)
 	if err != nil {
+		logger.EndWithError(fmt.Errorf("failed to marshal request: %w", err))
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
 	httpReq, err := http.NewRequest("POST", c.baseURL+"/api/embed", bytes.NewBuffer(reqBody))
 	if err != nil {
+		logger.EndWithError(fmt.Errorf("failed to create request: %w", err))
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
 	httpReq.Header.Set("Content-Type", "application/json")
+	logger.Info().Str("url", c.baseURL+"/api/embed").Msg("Sending embedding request to Ollama API")
 
 	resp, err := c.httpClient.Do(httpReq)
 	if err != nil {
+		logger.EndWithError(fmt.Errorf("failed to send request: %w", err))
 		return nil, fmt.Errorf("failed to send request: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(body))
+		err := fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(body))
+		logger.Error().Int("status_code", resp.StatusCode).Msg("Embedding API request failed")
+		logger.EndWithError(err)
+		return nil, err
 	}
 
 	var embedResp EmbedResponse
 	if err := json.NewDecoder(resp.Body).Decode(&embedResp); err != nil {
+		logger.EndWithError(fmt.Errorf("failed to decode response: %w", err))
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
 
 	// Ollama returns embeddings as array of arrays, we want the first one
 	if len(embedResp.Embeddings) == 0 {
-		return nil, fmt.Errorf("no embeddings returned from API")
+		err := fmt.Errorf("no embeddings returned from API")
+		logger.EndWithError(err)
+		return nil, err
 	}
-	return embedResp.Embeddings[0], nil
+
+	embedding := embedResp.Embeddings[0]
+	logger.Info().Int("embedding_dimensions", len(embedding)).Msg("Embedding generation successful")
+	logger.EndWithMsg("Embedding generation completed successfully")
+	return embedding, nil
 }
 
 // HealthCheck checks if Ollama is running and accessible
 func (c *Client) HealthCheck(ctx context.Context) error {
+	logger := logger.NewLogger("ollama-health-check")
+	logger.StartWithMsg("Performing Ollama health check")
+	logger.Info().Str("url", c.baseURL+"/api/tags").Msg("Checking Ollama availability")
+
 	httpReq, err := http.NewRequest("GET", c.baseURL+"/api/tags", nil)
 	if err != nil {
+		logger.EndWithError(fmt.Errorf("failed to create health check request: %w", err))
 		return fmt.Errorf("failed to create health check request: %w", err)
 	}
 
 	resp, err := c.httpClient.Do(httpReq)
 	if err != nil {
+		logger.EndWithError(fmt.Errorf("failed to send health check request: %w", err))
 		return fmt.Errorf("failed to send health check request: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("health check failed with status %d", resp.StatusCode)
+		err := fmt.Errorf("health check failed with status %d", resp.StatusCode)
+		logger.Error().Int("status_code", resp.StatusCode).Msg("Health check failed")
+		logger.EndWithError(err)
+		return err
 	}
 
+	logger.Info().Msg("Ollama health check passed")
+	logger.EndWithMsg("Health check completed successfully")
 	return nil
 }
 

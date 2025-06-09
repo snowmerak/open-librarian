@@ -9,39 +9,60 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/snowmerak/open-librarian/lib/util/logger"
 )
 
 // HealthCheckHandler handles health check requests
 func (h *HTTPServer) HealthCheckHandler(w http.ResponseWriter, r *http.Request) {
+	healthLogger := logger.NewLogger("health-check-handler")
+	healthLogger.StartWithMsg("Processing health check request")
+
 	ctx := r.Context()
 
 	if err := h.server.HealthCheck(ctx); err != nil {
+		healthLogger.Error().Err(err).Msg("Health check failed")
+		healthLogger.EndWithError(err)
 		writeErrorResponse(w, http.StatusServiceUnavailable, "service_unavailable", err.Error())
 		return
 	}
 
-	writeJSONResponse(w, http.StatusOK, map[string]string{
+	response := map[string]string{
 		"status": "healthy",
 		"time":   time.Now().Format(time.RFC3339),
-	})
+	}
+
+	healthLogger.Info().Msg("Health check passed")
+	healthLogger.EndWithMsg("Health check completed successfully")
+	writeJSONResponse(w, http.StatusOK, response)
 }
 
 // AddArticleHandler handles article addition requests
 func (h *HTTPServer) AddArticleHandler(w http.ResponseWriter, r *http.Request) {
+	addLogger := logger.NewLogger("add-article-handler")
+	addLogger.StartWithMsg("Processing add article request")
+
 	ctx := r.Context()
 
 	var req ArticleRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		addLogger.Error().Err(err).Msg("Invalid JSON format")
+		addLogger.EndWithError(err)
 		writeErrorResponse(w, http.StatusBadRequest, "invalid_json", "Invalid JSON format")
 		return
 	}
 
+	addLogger.Info().Str("title", req.Title).Msg("Article addition request details")
+
 	// Basic validation
 	if req.Title == "" {
+		addLogger.Error().Msg("Missing title in request")
+		addLogger.EndWithError(fmt.Errorf("title is required"))
 		writeErrorResponse(w, http.StatusBadRequest, "missing_title", "Title is required")
 		return
 	}
 	if req.Content == "" {
+		addLogger.Error().Msg("Missing content in request")
+		addLogger.EndWithError(fmt.Errorf("content is required"))
 		writeErrorResponse(w, http.StatusBadRequest, "missing_content", "Content is required")
 		return
 	}

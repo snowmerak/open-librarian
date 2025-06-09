@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/snowmerak/open-librarian/lib/util/language"
+	"github.com/snowmerak/open-librarian/lib/util/logger"
 )
 
 type Client struct {
@@ -69,29 +70,45 @@ const (
 
 // NewClient creates a new OpenSearch client
 func NewClient(baseURL string) *Client {
+	logger := logger.NewLogger("opensearch-client")
+	logger.StartWithMsg("Creating new OpenSearch client")
+
 	if baseURL == "" {
 		baseURL = DefaultBaseURL
+		logger.Info().Str("base_url", baseURL).Msg("Using default base URL")
+	} else {
+		logger.Info().Str("base_url", baseURL).Msg("Using provided base URL")
 	}
 
-	return &Client{
+	client := &Client{
 		baseURL:          baseURL,
 		languageDetector: language.NewDetector(),
 		httpClient: &http.Client{
 			Timeout: 3 * time.Minute,
 		},
 	}
+
+	logger.EndWithMsg("OpenSearch client created successfully")
+	return client
 }
 
 // IndexArticle indexes a new article with embeddings
 func (c *Client) IndexArticle(ctx context.Context, article *Article) (*IndexResponse, error) {
+	logger := logger.NewLogger("opensearch-index-article")
+	logger.StartWithMsg("Indexing article in OpenSearch")
+	logger.Info().Str("article_id", article.ID).Str("title", article.Title).Msg("Article indexing request")
+
 	// Auto-detect language if not provided
 	if article.Lang == "" {
 		article.Lang = c.languageDetector.DetectLanguage(article.Title + " " + article.Summary)
+		logger.Info().Str("detected_language", article.Lang).Msg("Language auto-detected")
 	}
 
 	// Validate language code
 	if !c.languageDetector.ValidateLanguageCode(article.Lang) {
+		originalLang := article.Lang
 		article.Lang = "en" // Default to English for unsupported languages
+		logger.Warn().Str("original_lang", originalLang).Str("default_lang", article.Lang).Msg("Invalid language code, using default")
 	}
 
 	// Prepare the document for indexing
@@ -109,6 +126,7 @@ func (c *Client) IndexArticle(ctx context.Context, article *Article) (*IndexResp
 
 	reqBody, err := json.Marshal(doc)
 	if err != nil {
+		logger.EndWithError(fmt.Errorf("failed to marshal document: %w", err))
 		return nil, fmt.Errorf("failed to marshal document: %w", err)
 	}
 
@@ -116,9 +134,11 @@ func (c *Client) IndexArticle(ctx context.Context, article *Article) (*IndexResp
 	if article.ID != "" {
 		url = fmt.Sprintf("%s/%s/_doc/%s", c.baseURL, DefaultIndexName, article.ID)
 	}
+	logger.Info().Str("url", url).Msg("Sending indexing request")
 
 	httpReq, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(reqBody))
 	if err != nil {
+		logger.EndWithError(fmt.Errorf("failed to create request: %w", err))
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
@@ -126,20 +146,32 @@ func (c *Client) IndexArticle(ctx context.Context, article *Article) (*IndexResp
 
 	resp, err := c.httpClient.Do(httpReq)
 	if err != nil {
+		logger.EndWithError(fmt.Errorf("failed to send request: %w", err))
 		return nil, fmt.Errorf("failed to send request: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
 		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("indexing failed with status %d: %s", resp.StatusCode, string(body))
+		err := fmt.Errorf("indexing failed with status %d: %s", resp.StatusCode, string(body))
+		logger.Error().Int("status_code", resp.StatusCode).Msg("Indexing failed")
+		logger.EndWithError(err)
+		return nil, err
 	}
 
 	var indexResp IndexResponse
 	if err := json.NewDecoder(resp.Body).Decode(&indexResp); err != nil {
+		logger.EndWithError(fmt.Errorf("failed to decode response: %w", err))
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
 
+	logger.DataCreated("article", indexResp.ID, map[string]interface{}{
+		"index":   indexResp.Index,
+		"version": indexResp.Version,
+		"result":  indexResp.Result,
+		"lang":    article.Lang,
+	})
+	logger.EndWithMsg("Article indexed successfully")
 	return &indexResp, nil
 }
 

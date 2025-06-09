@@ -8,6 +8,7 @@ import (
 	"log"
 
 	"github.com/qdrant/go-client/qdrant"
+	"github.com/snowmerak/open-librarian/lib/util/logger"
 )
 
 type Client struct {
@@ -29,9 +30,13 @@ const (
 
 // NewClient creates a new Qdrant client using the official gRPC client
 func NewClient(host string, port int) (*Client, error) {
+	qdrantLogger := logger.NewLogger("qdrant_client").StartWithMsg("Creating Qdrant client")
+
 	if port == 0 {
 		port = DefaultGrpcPort
 	}
+
+	qdrantLogger.Info().Str("host", host).Int("port", port).Msg("Connecting to Qdrant")
 
 	// Connect to Qdrant using gRPC
 	client, err := qdrant.NewClient(&qdrant.Config{
@@ -39,8 +44,11 @@ func NewClient(host string, port int) (*Client, error) {
 		Port: port,
 	})
 	if err != nil {
+		qdrantLogger.EndWithError(err)
 		return nil, fmt.Errorf("failed to connect to Qdrant: %w", err)
 	}
+
+	qdrantLogger.EndWithMsg("Qdrant client created successfully")
 
 	return &Client{
 		client:         client,
@@ -83,6 +91,10 @@ func (c *Client) CreateCollection(ctx context.Context) error {
 
 // UpsertPoint inserts or updates a point in the collection
 func (c *Client) UpsertPoint(ctx context.Context, pointID string, vector []float64, lang string) error {
+	upsertLogger := logger.NewLogger("qdrant-upsert-point")
+	upsertLogger.StartWithMsg("Upserting point to Qdrant")
+	upsertLogger.Info().Str("point_id", pointID).Str("lang", lang).Int("vector_dim", len(vector)).Msg("Upsert point request")
+
 	// Convert float64 to float32 for Qdrant
 	vector32 := make([]float32, len(vector))
 	for i, v := range vector {
@@ -92,12 +104,14 @@ func (c *Client) UpsertPoint(ctx context.Context, pointID string, vector []float
 	// Create minimal payload with only language for filtering
 	langValue, err := qdrant.NewValue(lang)
 	if err != nil {
+		upsertLogger.EndWithError(fmt.Errorf("failed to create language value: %w", err))
 		return fmt.Errorf("failed to create language value: %w", err)
 	}
 
 	// Also store the original OpenSearch ID in payload for mapping
 	idValue, err := qdrant.NewValue(pointID)
 	if err != nil {
+		upsertLogger.EndWithError(fmt.Errorf("failed to create id value: %w", err))
 		return fmt.Errorf("failed to create id value: %w", err)
 	}
 
@@ -108,6 +122,7 @@ func (c *Client) UpsertPoint(ctx context.Context, pointID string, vector []float
 
 	// Convert string ID to numeric ID using hash
 	numericID := c.stringToNumericID(pointID)
+	upsertLogger.Info().Uint64("numeric_id", numericID).Msg("Generated numeric ID")
 
 	point := &qdrant.PointStruct{
 		Id:      qdrant.NewIDNum(numericID),
@@ -121,16 +136,30 @@ func (c *Client) UpsertPoint(ctx context.Context, pointID string, vector []float
 	})
 
 	if err != nil {
+		upsertLogger.EndWithError(fmt.Errorf("failed to upsert point: %w", err))
 		return fmt.Errorf("failed to upsert point: %w", err)
 	}
 
+	upsertLogger.DataCreated("vector_point", pointID, map[string]interface{}{
+		"numeric_id": numericID,
+		"language":   lang,
+		"vector_dim": len(vector),
+		"collection": c.collectionName,
+	})
+	upsertLogger.EndWithMsg("Point upserted successfully")
 	return nil
 }
 
 // VectorSearch performs vector similarity search and returns IDs with scores
 func (c *Client) VectorSearch(ctx context.Context, queryVector []float64, limit uint64, lang string) ([]VectorSearchResult, error) {
+	searchLogger := logger.NewLogger("qdrant-vector-search")
+	searchLogger.StartWithMsg("Performing vector similarity search")
+	searchLogger.Info().Int("vector_dim", len(queryVector)).Uint64("limit", limit).Str("lang", lang).Msg("Vector search request")
+
 	if len(queryVector) == 0 {
-		return nil, fmt.Errorf("query vector is required")
+		err := fmt.Errorf("query vector is required")
+		searchLogger.EndWithError(err)
+		return nil, err
 	}
 
 	log.Printf("=== Qdrant VectorSearch START ===")
