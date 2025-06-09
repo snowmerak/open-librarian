@@ -101,7 +101,7 @@ cp .env.example .env
 
 3. **Start services with Docker**
 ```bash
-docker-compose up -d
+./scripts/setup-services.sh
 ```
 
 4. **Run the application**
