@@ -2,7 +2,6 @@ package api
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -37,12 +36,6 @@ func writeJSONResponse(w http.ResponseWriter, statusCode int, data interface{}) 
 	json.NewEncoder(w).Encode(data)
 }
 
-// sendSSEMessage sends a Server-Sent Event message
-func sendSSEMessage(w http.ResponseWriter, eventType, data string) {
-	fmt.Fprintf(w, "event: %s\n", eventType)
-	fmt.Fprintf(w, "data: %s\n\n", data)
-}
-
 // SetupRoutes configures the HTTP routes
 func (h *HTTPServer) SetupRoutes() *chi.Mux {
 	router := chi.NewRouter()
@@ -63,7 +56,6 @@ func (h *HTTPServer) SetupRoutes() *chi.Mux {
 
 		// Search
 		r.Post("/search", h.SearchHandler)
-		r.Post("/search/stream", h.SearchStreamHandler)
 		r.Get("/search/keyword", h.KeywordSearchHandler)
 		r.Get("/search/ws", h.WebSocketSearchHandler)
 
