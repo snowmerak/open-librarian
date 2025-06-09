@@ -67,9 +67,16 @@ func (c *Client) GenerateText(ctx context.Context, prompt string) (string, error
 
 // GenerateTextWithModel generates text using a specific model
 func (c *Client) GenerateTextWithModel(ctx context.Context, model, prompt string) (string, error) {
+	// Add strict output formatting instructions to prevent LLM from adding commentary
+	strictPrompt := fmt.Sprintf(`You must respond ONLY with the requested content. Do not add any commentary, explanations, opinions, or meta-text. Do not prefix or suffix your response with any additional text.
+
+%s
+
+Remember: Output ONLY the requested content, nothing else.`, prompt)
+
 	req := GenerateRequest{
 		Model:  model,
-		Prompt: prompt,
+		Prompt: strictPrompt,
 		Stream: false,
 	}
 
@@ -111,9 +118,16 @@ func (c *Client) GenerateTextStream(ctx context.Context, prompt string, callback
 
 // GenerateTextStreamWithModel generates text using a specific model in streaming mode
 func (c *Client) GenerateTextStreamWithModel(ctx context.Context, model, prompt string, callback func(string) error) error {
+	// Add strict output formatting instructions to prevent LLM from adding commentary
+	strictPrompt := fmt.Sprintf(`You must respond ONLY with the requested content. Do not add any commentary, explanations, opinions, or meta-text. Do not prefix or suffix your response with any additional text.
+
+%s
+
+Remember: Output ONLY the requested content, nothing else.`, prompt)
+
 	req := GenerateRequest{
 		Model:  model,
-		Prompt: prompt,
+		Prompt: strictPrompt,
 		Stream: true,
 	}
 
