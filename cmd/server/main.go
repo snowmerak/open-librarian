@@ -115,6 +115,10 @@ func setupRouter(httpServer *api.HTTPServer) *chi.Mux {
 	publicFS := http.FileServer(http.Dir("./cmd/server/public/"))
 	router.Handle("/public/*", http.StripPrefix("/public/", publicFS))
 
+	router.Get("/", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/public/index.html", http.StatusFound)
+	})
+
 	// Serve Swagger UI
 	swaggerFS := http.FileServer(http.Dir("./cmd/server/swagger/"))
 	router.Handle("/swagger/*", http.StripPrefix("/swagger/", swaggerFS))

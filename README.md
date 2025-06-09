@@ -2,6 +2,8 @@
 
 An intelligent search service that provides AI-powered answers based on stored articles with real-time communication and user authentication.
 
+![open-librarian-main](/img/main_page.png)
+
 ## 🚀 Key Features
 
 | **Component** | **Technology** | **Version** | **Description** |
