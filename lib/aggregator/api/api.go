@@ -526,7 +526,8 @@ func (s *Server) AddArticlesBulkWithProgress(ctx context.Context, req *BulkArtic
 
 // Search performs hybrid search combining vector and keyword search
 func (s *Server) Search(ctx context.Context, req *SearchRequest) (*SearchResponse, error) {
-	log.Printf("Searching for: %s", req.Query)
+	// Remove unnecessary log
+	// log.Printf("Searching for: %s", req.Query)
 
 	// 1. Detect query language
 	queryLang := s.languageDetector.DetectLanguage(req.Query)
@@ -551,13 +552,15 @@ func (s *Server) Search(ctx context.Context, req *SearchRequest) (*SearchRespons
 		allVectorResults = []qdrant.VectorSearchResult{}
 	}
 
-	// Separate title and summary results
+	// Separate title and summary results and log vector search scores
 	var titleVectorResults, summaryVectorResults []qdrant.VectorSearchResult
 	for _, result := range allVectorResults {
 		if len(result.ID) > 6 && result.ID[len(result.ID)-6:] == "_title" {
 			titleVectorResults = append(titleVectorResults, result)
+			log.Printf("Vector search (title): ID=%s, Score=%.4f", s.extractArticleID(result.ID), result.Score)
 		} else if len(result.ID) > 8 && result.ID[len(result.ID)-8:] == "_summary" {
 			summaryVectorResults = append(summaryVectorResults, result)
+			log.Printf("Vector search (summary): ID=%s, Score=%.4f", s.extractArticleID(result.ID), result.Score)
 		}
 	}
 
@@ -566,6 +569,16 @@ func (s *Server) Search(ctx context.Context, req *SearchRequest) (*SearchRespons
 
 	// 4b. Keyword search with OpenSearch
 	keywordResp, err := s.opensearchClient.KeywordSearch(ctx, req.Query, queryLang, size*2, req.From)
+	if err != nil {
+		log.Printf("Keyword search failed: %v", err)
+		keywordResp = &opensearch.SearchResponse{Results: []opensearch.SearchResult{}}
+	}
+
+	// Log keyword search scores
+	for _, result := range keywordResp.Results {
+		log.Printf("Keyword search: ID=%s, Score=%.4f", result.Article.ID, result.Score)
+	}
+
 	// 5. Get articles by IDs from vector search results
 	var vectorArticleIDs []string
 	uniqueIDs := make(map[string]bool)
@@ -578,7 +591,8 @@ func (s *Server) Search(ctx context.Context, req *SearchRequest) (*SearchRespons
 		}
 	}
 
-	log.Printf("Extracted unique article IDs: %v", vectorArticleIDs)
+	// Remove unnecessary log
+	// log.Printf("Extracted unique article IDs: %v", vectorArticleIDs)
 
 	var vectorArticles []opensearch.Article
 	if len(vectorArticleIDs) > 0 {
@@ -651,15 +665,24 @@ func (s *Server) combineSearchResults(vectorResults []qdrant.VectorSearchResult,
 
 			// Combine normalized scores with weighted average: vector 60%, keyword 40%
 			combinedScore := (0.6 * normalizedVectorScore) + (0.4 * normalizedKeywordScore)
+
+			// Log score combination details
+			log.Printf("Score combination: ID=%s, Vector=%.4f, Keyword=%.4f->%.4f, Combined=%.4f",
+				result.Article.ID, normalizedVectorScore, result.Score, normalizedKeywordScore, combinedScore)
+
 			resultMap[result.Article.ID] = SearchResultWithScore{
 				Article: result.Article,
 				Score:   combinedScore,
 				Source:  "hybrid",
 			}
 		} else {
+			normalizedScore := s.normalizeKeywordScore(result.Score)
+			log.Printf("Keyword only: ID=%s, Original=%.4f, Normalized=%.4f",
+				result.Article.ID, result.Score, normalizedScore)
+
 			resultMap[result.Article.ID] = SearchResultWithScore{
 				Article: result.Article,
-				Score:   s.normalizeKeywordScore(result.Score),
+				Score:   normalizedScore,
 				Source:  "keyword",
 			}
 		}
@@ -670,6 +693,9 @@ func (s *Server) combineSearchResults(vectorResults []qdrant.VectorSearchResult,
 	for _, result := range resultMap {
 		if result.Score >= minScoreThreshold {
 			combinedResults = append(combinedResults, result)
+			log.Printf("Final result: ID=%s, Score=%.4f, Source=%s", result.Article.ID, result.Score, result.Source)
+		} else {
+			log.Printf("Filtered out (low score): ID=%s, Score=%.4f, Source=%s", result.Article.ID, result.Score, result.Source)
 		}
 	}
 
@@ -935,8 +961,8 @@ Answer (Markdown format):`
 		context += "\n"
 	}
 
-	log.Printf("Answer generation: Used full content for %d articles, summary for %d articles (total: %d)",
-		contentUsageCount, summaryUsageCount, len(articles))
+	log.Printf("Answer generation: Using %d articles (content: %d, summary: %d)",
+		len(articles), contentUsageCount, summaryUsageCount)
 
 	// Create prompt for answer generation
 	prompt := ""
@@ -1178,8 +1204,8 @@ Answer (Markdown format):`
 		context += "\n"
 	}
 
-	log.Printf("Answer generation (streaming): Used full content for %d articles, summary for %d articles (total: %d)",
-		contentUsageCount, summaryUsageCount, len(articles))
+	log.Printf("Answer generation (streaming): Using %d articles (content: %d, summary: %d)",
+		len(articles), contentUsageCount, summaryUsageCount)
 
 	// Create prompt for answer generation
 	prompt := ""
