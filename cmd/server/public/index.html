@@ -29,6 +29,37 @@
                 </a>
             </nav>
             
+            <!-- 사용자 인증 상태 -->
+            <div id="auth-section" class="border-t border-slate-200 p-4">
+                <!-- 로그인되지 않은 상태 -->
+                <div id="logged-out-section" class="space-y-2">
+                    <button onclick="showAuthModal('login')" class="w-full text-sm bg-indigo-600 text-white py-2 px-3 rounded-md hover:bg-indigo-700 transition" data-i18n="login">
+                        로그인
+                    </button>
+                    <button onclick="showAuthModal('signup')" class="w-full text-sm border border-slate-300 text-slate-700 py-2 px-3 rounded-md hover:bg-slate-50 transition" data-i18n="signup">
+                        회원가입
+                    </button>
+                </div>
+                
+                <!-- 로그인된 상태 -->
+                <div id="logged-in-section" class="hidden">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center space-x-2">
+                            <div class="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-indigo-600"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                            </div>
+                            <div class="hidden md:block">
+                                <div id="user-username" class="text-sm font-medium text-slate-700"></div>
+                                <div id="user-email" class="text-xs text-slate-500"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <button onclick="logout()" class="w-full text-sm border border-slate-300 text-slate-700 py-2 px-3 rounded-md hover:bg-slate-50 transition" data-i18n="logout">
+                        로그아웃
+                    </button>
+                </div>
+            </div>
+            
             <!-- 언어 선택기 -->
             <div class="border-t border-slate-200 p-4">
                 <div class="hidden md:block">
@@ -199,6 +230,86 @@
         </main>
     </div>
 
+    <!-- 인증 모달 -->
+    <div id="auth-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 id="auth-modal-title" class="text-xl font-semibold text-slate-800"></h2>
+                    <button onclick="closeAuthModal()" class="text-slate-400 hover:text-slate-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                </div>
+                
+                <!-- 로그인 폼 -->
+                <div id="login-form-container">
+                    <form id="login-form" class="space-y-4">
+                        <div>
+                            <label for="login-email" class="block text-sm font-medium text-slate-700 mb-1" data-i18n="email">이메일</label>
+                            <input type="email" id="login-email" name="email" required class="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" data-i18n-placeholder="emailPlaceholder" placeholder="your@email.com">
+                        </div>
+                        <div>
+                            <label for="login-password" class="block text-sm font-medium text-slate-700 mb-1" data-i18n="password">비밀번호</label>
+                            <input type="password" id="login-password" name="password" required class="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" data-i18n-placeholder="passwordPlaceholder" placeholder="비밀번호를 입력하세요">
+                        </div>
+                        <button type="submit" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors font-medium" data-i18n="loginButton">
+                            로그인
+                        </button>
+                    </form>
+                    <div class="mt-4 text-center">
+                        <span class="text-sm text-slate-600" data-i18n="noAccount">계정이 없으신가요?</span>
+                        <button onclick="switchAuthMode('signup')" class="text-sm text-indigo-600 hover:text-indigo-800 font-medium ml-1" data-i18n="signupLink">회원가입</button>
+                    </div>
+                </div>
+                
+                <!-- 회원가입 폼 -->
+                <div id="signup-form-container" class="hidden">
+                    <form id="signup-form" class="space-y-4">
+                        <div>
+                            <label for="signup-username" class="block text-sm font-medium text-slate-700 mb-1" data-i18n="username">사용자명</label>
+                            <input type="text" id="signup-username" name="username" required class="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" data-i18n-placeholder="usernamePlaceholder" placeholder="사용자명을 입력하세요">
+                        </div>
+                        <div>
+                            <label for="signup-email" class="block text-sm font-medium text-slate-700 mb-1" data-i18n="email">이메일</label>
+                            <input type="email" id="signup-email" name="email" required class="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" data-i18n-placeholder="emailPlaceholder" placeholder="your@email.com">
+                        </div>
+                        <div>
+                            <label for="signup-password" class="block text-sm font-medium text-slate-700 mb-1" data-i18n="password">비밀번호</label>
+                            <input type="password" id="signup-password" name="password" required class="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" data-i18n-placeholder="passwordPlaceholder" placeholder="비밀번호를 입력하세요">
+                        </div>
+                        <div>
+                            <label for="signup-confirm-password" class="block text-sm font-medium text-slate-700 mb-1" data-i18n="confirmPassword">비밀번호 확인</label>
+                            <input type="password" id="signup-confirm-password" name="confirmPassword" required class="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" data-i18n-placeholder="confirmPasswordPlaceholder" placeholder="비밀번호를 다시 입력하세요">
+                        </div>
+                        <button type="submit" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors font-medium" data-i18n="signupButton">
+                            회원가입
+                        </button>
+                    </form>
+                    <div class="mt-4 text-center">
+                        <span class="text-sm text-slate-600" data-i18n="hasAccount">이미 계정이 있으신가요?</span>
+                        <button onclick="switchAuthMode('login')" class="text-sm text-indigo-600 hover:text-indigo-800 font-medium ml-1" data-i18n="loginLink">로그인</button>
+                    </div>
+                </div>
+                
+                <!-- 로딩 상태 -->
+                <div id="auth-loading" class="hidden text-center py-4">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
+                    <p class="mt-2 text-sm text-slate-600" data-i18n="processing">처리 중...</p>
+                </div>
+                
+                <!-- 에러 메시지 -->
+                <div id="auth-error" class="hidden mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
+                    <p id="auth-error-message" class="text-sm text-red-600"></p>
+                </div>
+                
+                <!-- 성공 메시지 -->
+                <div id="auth-success" class="hidden mt-4 p-3 bg-green-50 border border-green-200 rounded-md">
+                    <p id="auth-success-message" class="text-sm text-green-600"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- JavaScript 파일들 -->
     <script src="js/i18n.js"></script>
     <script src="js/database.js"></script>
@@ -206,6 +317,7 @@
     <script src="js/search.js"></script>
     <script src="js/articles.js"></script>
     <script src="js/article-actions.js"></script>
+    <script src="js/auth.js"></script>
     <script src="js/app.js"></script>
 </body>
 </html>

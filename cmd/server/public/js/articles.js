@@ -23,6 +23,14 @@ function initArticleForm() {
     // 아티클 추가 폼 처리 - WebSocket을 이용한 실시간 진행률 표시
     document.getElementById('add-article-form').addEventListener('submit', async function(e) {
         e.preventDefault();
+        
+        // 로그인 상태 확인
+        if (!isLoggedIn()) {
+            alert('로그인이 필요합니다.');
+            showAuthModal('login');
+            return;
+        }
+        
         const button = e.target.querySelector('button[type="submit"]');
         const originalText = button.innerHTML;
         
@@ -54,14 +62,23 @@ function initArticleForm() {
             } catch (wsError) {
                 console.warn('WebSocket article addition failed, falling back to HTTP:', wsError);
                 
-                // Fallback to regular HTTP request
+                // Fallback to regular HTTP request with JWT token
+                const token = getJWTToken();
                 const response = await fetch(`${API_BASE_URL}/api/v1/articles`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
                     },
                     body: JSON.stringify(articleData)
                 });
+
+                if (response.status === 401) {
+                    alert('인증이 만료되었습니다. 다시 로그인해주세요.');
+                    setJWTToken(null);
+                    showAuthModal('login');
+                    return;
+                }
 
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
@@ -151,6 +168,13 @@ function initArticleForm() {
 
 // 대량 업로드 처리 - 각 아티클을 개별 WebSocket으로 처리
 async function handleBulkUpload() {
+    // 로그인 상태 확인
+    if (!isLoggedIn()) {
+        alert('로그인이 필요합니다.');
+        showAuthModal('login');
+        return;
+    }
+    
     if (!window.jsonlData || window.jsonlData.length === 0) {
         alert(t('noUploadData'));
         return;
@@ -270,9 +294,16 @@ async function handleBulkUpload() {
 // 개별 아티클에 대한 WebSocket 처리 (실시간 진행률 표시 포함)
 async function processIndividualArticleWithWebSocket(articleData, articleTitle) {
     return new Promise((resolve, reject) => {
-        // WebSocket 연결 설정
+        // JWT 토큰 확인
+        const token = getJWTToken();
+        if (!token) {
+            reject(new Error('Authentication required'));
+            return;
+        }
+        
+        // WebSocket 연결 설정 - 토큰을 쿼리 파라미터로 전달
         const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${wsProtocol}//${window.location.host}/api/v1/articles/ws`;
+        const wsUrl = `${wsProtocol}//${window.location.host}/api/v1/articles/ws?token=${encodeURIComponent(token)}`;
         const ws = new WebSocket(wsUrl);
         
         let hasCompleted = false;
@@ -400,9 +431,16 @@ async function handleWebSocketArticleAddition(articleData, button, originalText)
         const progressContainer = createArticleProgressUI(articleData.title, button);
         
         try {
-            // WebSocket 연결 생성
+            // JWT 토큰 확인
+            const token = getJWTToken();
+            if (!token) {
+                reject(new Error('Authentication required'));
+                return;
+            }
+            
+            // WebSocket 연결 생성 - 토큰을 쿼리 파라미터로 전달
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsUrl = `${protocol}//${window.location.host}/api/v1/articles/ws`;
+            const wsUrl = `${protocol}//${window.location.host}/api/v1/articles/ws?token=${encodeURIComponent(token)}`;
             const ws = new WebSocket(wsUrl);
             
             let completed = false;

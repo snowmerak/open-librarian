@@ -188,21 +188,19 @@ func (h *HTTPServer) WebSocketSearchHandler(w http.ResponseWriter, r *http.Reque
 func (h *HTTPServer) WebSocketAddArticleHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	// Check for authentication before upgrading WebSocket
+	// Check for authentication - first try Authorization header, then query parameter
+	var tokenString string
 	authHeader := r.Header.Get("Authorization")
-	if authHeader == "" {
-		http.Error(w, "Authorization header required", http.StatusUnauthorized)
-		return
+
+	if authHeader != "" && strings.HasPrefix(authHeader, "Bearer ") {
+		tokenString = strings.TrimPrefix(authHeader, "Bearer ")
+	} else {
+		// Try to get token from query parameter
+		tokenString = r.URL.Query().Get("token")
 	}
 
-	if !strings.HasPrefix(authHeader, "Bearer ") {
-		http.Error(w, "Authorization header must start with 'Bearer '", http.StatusUnauthorized)
-		return
-	}
-
-	tokenString := strings.TrimPrefix(authHeader, "Bearer ")
 	if tokenString == "" {
-		http.Error(w, "Token required", http.StatusUnauthorized)
+		http.Error(w, "Authorization required (header or query parameter)", http.StatusUnauthorized)
 		return
 	}
 
@@ -320,21 +318,19 @@ func (h *HTTPServer) WebSocketAddArticleHandler(w http.ResponseWriter, r *http.R
 func (h *HTTPServer) WebSocketBulkAddArticleHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	// Check for authentication before upgrading WebSocket
+	// Check for authentication - first try Authorization header, then query parameter
+	var tokenString string
 	authHeader := r.Header.Get("Authorization")
-	if authHeader == "" {
-		http.Error(w, "Authorization header required", http.StatusUnauthorized)
-		return
+
+	if authHeader != "" && strings.HasPrefix(authHeader, "Bearer ") {
+		tokenString = strings.TrimPrefix(authHeader, "Bearer ")
+	} else {
+		// Try to get token from query parameter
+		tokenString = r.URL.Query().Get("token")
 	}
 
-	if !strings.HasPrefix(authHeader, "Bearer ") {
-		http.Error(w, "Authorization header must start with 'Bearer '", http.StatusUnauthorized)
-		return
-	}
-
-	tokenString := strings.TrimPrefix(authHeader, "Bearer ")
 	if tokenString == "" {
-		http.Error(w, "Token required", http.StatusUnauthorized)
+		http.Error(w, "Authorization required (header or query parameter)", http.StatusUnauthorized)
 		return
 	}
 
