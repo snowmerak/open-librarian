@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"fmt"
-	"log"
 
 	"github.com/qdrant/go-client/qdrant"
 	"github.com/snowmerak/open-librarian/lib/util/logger"
@@ -154,7 +153,6 @@ func (c *Client) UpsertPoint(ctx context.Context, pointID string, vector []float
 func (c *Client) VectorSearch(ctx context.Context, queryVector []float64, limit uint64, lang string) ([]VectorSearchResult, error) {
 	searchLogger := logger.NewLogger("qdrant-vector-search")
 	searchLogger.StartWithMsg("Performing vector similarity search")
-	searchLogger.Info().Int("vector_dim", len(queryVector)).Uint64("limit", limit).Str("lang", lang).Msg("Vector search request")
 
 	if len(queryVector) == 0 {
 		err := fmt.Errorf("query vector is required")
@@ -162,8 +160,11 @@ func (c *Client) VectorSearch(ctx context.Context, queryVector []float64, limit 
 		return nil, err
 	}
 
-	log.Printf("=== Qdrant VectorSearch START ===")
-	log.Printf("Query vector dimension: %d, Limit: %d, Lang: '%s'", len(queryVector), limit, lang)
+	searchLogger.Info().
+		Int("query_vector_dim", len(queryVector)).
+		Uint64("limit", limit).
+		Str("lang", lang).
+		Msg("Starting vector search")
 
 	// Convert float64 to float32 for Qdrant
 	queryVector32 := make([]float32, len(queryVector))
@@ -186,18 +187,18 @@ func (c *Client) VectorSearch(ctx context.Context, queryVector []float64, limit 
 				qdrant.NewMatch("lang", lang),
 			},
 		}
-		log.Printf("Added language filter: %s", lang)
+		searchLogger.Debug().Str("language_filter", lang).Msg("Added language filter")
 	} else {
-		log.Printf("No language filter applied (debugging: language filtering disabled)")
+		searchLogger.Debug().Msg("No language filter applied (debugging: language filtering disabled)")
 	}
 
 	searchResult, err := c.client.Query(ctx, queryRequest)
 	if err != nil {
-		log.Printf("Qdrant query failed: %v", err)
+		searchLogger.EndWithError(fmt.Errorf("failed to search vectors: %w", err))
 		return nil, fmt.Errorf("failed to search vectors: %w", err)
 	}
 
-	log.Printf("Qdrant returned %d results", len(searchResult))
+	searchLogger.Info().Int("result_count", len(searchResult)).Msg("Qdrant search completed")
 
 	results := make([]VectorSearchResult, 0, len(searchResult))
 	for i, hit := range searchResult {
@@ -225,10 +226,14 @@ func (c *Client) VectorSearch(ctx context.Context, queryVector []float64, limit 
 		}
 		results = append(results, result)
 
-		log.Printf("Qdrant result #%d: ID=%s, Score=%.4f", i+1, id, hit.Score)
+		searchLogger.Debug().
+			Int("result_index", i+1).
+			Str("id", id).
+			Float64("score", float64(hit.Score)).
+			Msg("Vector search result")
 	}
 
-	log.Printf("=== Qdrant VectorSearch END ===")
+	searchLogger.EndWithMsg("Vector search completed")
 	return results, nil
 }
 

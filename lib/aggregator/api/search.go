@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"fmt"
-	"log"
 	"math"
 	"regexp"
 	"strconv"
@@ -70,10 +69,18 @@ func (s *Server) Search(ctx context.Context, req *SearchRequest) (*SearchRespons
 	for _, result := range allVectorResults {
 		if len(result.ID) > 6 && result.ID[len(result.ID)-6:] == "_title" {
 			titleVectorResults = append(titleVectorResults, result)
-			log.Printf("Vector search (title): ID=%s, Score=%.4f", s.extractArticleID(result.ID), result.Score)
+			vectorLogger.Debug().
+				Str("article_id", s.extractArticleID(result.ID)).
+				Float64("score", float64(result.Score)).
+				Str("type", "title").
+				Msg("Vector search result classified")
 		} else if len(result.ID) > 8 && result.ID[len(result.ID)-8:] == "_summary" {
 			summaryVectorResults = append(summaryVectorResults, result)
-			log.Printf("Vector search (summary): ID=%s, Score=%.4f", s.extractArticleID(result.ID), result.Score)
+			vectorLogger.Debug().
+				Str("article_id", s.extractArticleID(result.ID)).
+				Float64("score", float64(result.Score)).
+				Str("type", "summary").
+				Msg("Vector search result classified")
 		}
 	}
 
@@ -85,13 +92,16 @@ func (s *Server) Search(ctx context.Context, req *SearchRequest) (*SearchRespons
 	// Request expandedSize to get more candidates for better score combination
 	keywordResp, err := s.opensearchClient.KeywordSearch(ctx, req.Query, queryLang, expandedSize, req.From)
 	if err != nil {
-		log.Printf("Keyword search failed: %v", err)
+		searchLogger.Error().Err(err).Msg("Keyword search failed")
 		keywordResp = &opensearch.SearchResponse{Results: []opensearch.SearchResult{}}
 	}
 
 	// Log keyword search scores
 	for _, result := range keywordResp.Results {
-		log.Printf("Keyword search: ID=%s, Score=%.4f", result.Article.ID, result.Score)
+		searchLogger.Debug().
+			Str("article_id", result.Article.ID).
+			Float64("score", result.Score).
+			Msg("Keyword search result")
 	}
 
 	// 5. Get articles by IDs from vector search results
@@ -106,14 +116,11 @@ func (s *Server) Search(ctx context.Context, req *SearchRequest) (*SearchRespons
 		}
 	}
 
-	// Remove unnecessary log
-	// log.Printf("Extracted unique article IDs: %v", vectorArticleIDs)
-
 	var vectorArticles []opensearch.Article
 	if len(vectorArticleIDs) > 0 {
 		vectorArticles, err = s.opensearchClient.GetArticlesByIDs(ctx, vectorArticleIDs)
 		if err != nil {
-			log.Printf("Failed to get articles by IDs: %v", err)
+			searchLogger.Error().Err(err).Msg("Failed to get articles by IDs")
 			vectorArticles = []opensearch.Article{}
 		}
 	}
@@ -124,7 +131,7 @@ func (s *Server) Search(ctx context.Context, req *SearchRequest) (*SearchRespons
 	// 6.5. Validate search relevance using LLM
 	filteredResults, err := s.validateSearchRelevance(ctx, req.Query, combinedResults)
 	if err != nil {
-		log.Printf("Failed to validate search relevance: %v", err)
+		searchLogger.Warn().Err(err).Msg("Failed to validate search relevance")
 		// Continue with original results if validation fails
 		filteredResults = combinedResults
 	}
@@ -150,6 +157,9 @@ func (s *Server) Search(ctx context.Context, req *SearchRequest) (*SearchRespons
 
 // combineSearchResults combines vector and keyword search results with scoring
 func (s *Server) combineSearchResults(vectorResults []qdrant.VectorSearchResult, vectorArticles []opensearch.Article, keywordResults []opensearch.SearchResult, limit int) []SearchResultWithScore {
+	combineLogger := logger.NewLogger("combine_search_results").StartWithMsg("Combining search results")
+	defer combineLogger.EndWithMsg("Search results combination complete")
+
 	const minScoreThreshold = 0.35   // Minimum score threshold for quality filtering
 	const singleSourcePenalty = 0.75 // Penalty for non-hybrid results
 
@@ -191,8 +201,13 @@ func (s *Server) combineSearchResults(vectorResults []qdrant.VectorSearchResult,
 			combinedScore := (0.6 * normalizedVectorScore) + (0.4 * normalizedKeywordScore)
 
 			// Log score combination details
-			log.Printf("Score combination: ID=%s, Vector=%.4f, Keyword=%.4f->%.4f, Combined=%.4f",
-				result.Article.ID, normalizedVectorScore, result.Score, normalizedKeywordScore, combinedScore)
+			combineLogger.Debug().
+				Str("article_id", result.Article.ID).
+				Float64("vector_score", normalizedVectorScore).
+				Float64("keyword_original", result.Score).
+				Float64("keyword_normalized", normalizedKeywordScore).
+				Float64("combined_score", combinedScore).
+				Msg("Score combination calculated")
 
 			resultMap[result.Article.ID] = SearchResultWithScore{
 				Article: result.Article,
@@ -203,8 +218,12 @@ func (s *Server) combineSearchResults(vectorResults []qdrant.VectorSearchResult,
 			normalizedScore := s.normalizeKeywordScore(result.Score)
 			// Apply penalty for keyword-only results
 			penalizedScore := normalizedScore * singleSourcePenalty
-			log.Printf("Keyword only: ID=%s, Original=%.4f, Normalized=%.4f, Penalized=%.4f",
-				result.Article.ID, result.Score, normalizedScore, penalizedScore)
+			combineLogger.Debug().
+				Str("article_id", result.Article.ID).
+				Float64("original_score", result.Score).
+				Float64("normalized_score", normalizedScore).
+				Float64("penalized_score", penalizedScore).
+				Msg("Keyword-only result scored")
 
 			resultMap[result.Article.ID] = SearchResultWithScore{
 				Article: result.Article,
@@ -218,8 +237,11 @@ func (s *Server) combineSearchResults(vectorResults []qdrant.VectorSearchResult,
 	for articleID, result := range resultMap {
 		if result.Source == "vector" {
 			penalizedScore := result.Score * singleSourcePenalty
-			log.Printf("Vector only: ID=%s, Original=%.4f, Penalized=%.4f",
-				articleID, result.Score, penalizedScore)
+			combineLogger.Debug().
+				Str("article_id", articleID).
+				Float64("original_score", result.Score).
+				Float64("penalized_score", penalizedScore).
+				Msg("Vector-only result penalized")
 
 			result.Score = penalizedScore
 			resultMap[articleID] = result
@@ -231,9 +253,18 @@ func (s *Server) combineSearchResults(vectorResults []qdrant.VectorSearchResult,
 	for _, result := range resultMap {
 		if result.Score >= minScoreThreshold {
 			combinedResults = append(combinedResults, result)
-			log.Printf("Final result: ID=%s, Score=%.4f, Source=%s", result.Article.ID, result.Score, result.Source)
+			combineLogger.Debug().
+				Str("article_id", result.Article.ID).
+				Float64("score", result.Score).
+				Str("source", result.Source).
+				Msg("Result included")
 		} else {
-			log.Printf("Filtered out (low score): ID=%s, Score=%.4f, Source=%s", result.Article.ID, result.Score, result.Source)
+			combineLogger.Debug().
+				Str("article_id", result.Article.ID).
+				Float64("score", result.Score).
+				Str("source", result.Source).
+				Float64("threshold", minScoreThreshold).
+				Msg("Result filtered out (low score)")
 		}
 	}
 
@@ -347,9 +378,18 @@ func (s *Server) extractArticleID(pointID string) string {
 
 // validateSearchRelevance uses LLM to check if search results are relevant to the user's query
 func (s *Server) validateSearchRelevance(ctx context.Context, query string, results []SearchResultWithScore) ([]SearchResultWithScore, error) {
+	relevanceLogger := logger.NewLogger("search_relevance_validation").StartWithMsg("Validating search relevance with LLM")
+	defer relevanceLogger.EndWithMsg("Search relevance validation complete")
+
 	if len(results) == 0 {
+		relevanceLogger.Info().Msg("No results to validate")
 		return results, nil
 	}
+
+	relevanceLogger.Info().
+		Int("result_count", len(results)).
+		Str("query", query).
+		Msg("Starting relevance validation")
 
 	// Detect query language for appropriate prompt
 	queryLang := s.languageDetector.DetectLanguage(query)
@@ -459,12 +499,12 @@ Provide only scores without additional explanations.`
 	// Get LLM evaluation
 	evaluation, err := s.ollamaClient.GenerateText(ctx, prompt)
 	if err != nil {
-		log.Printf("Failed to get relevance evaluation from LLM: %v", err)
+		relevanceLogger.Error().Err(err).Msg("Failed to get relevance evaluation from LLM")
 		// Return original results if LLM evaluation fails
 		return results, nil
 	}
 
-	log.Printf("LLM Relevance Evaluation:\n%s", evaluation)
+	relevanceLogger.Debug().Str("evaluation_response", evaluation).Msg("LLM relevance evaluation received")
 
 	// Parse relevance scores from LLM response
 	relevanceScores := s.parseRelevanceScores(evaluation, len(results))
@@ -477,8 +517,11 @@ Provide only scores without additional explanations.`
 		if i < len(relevanceScores) {
 			relevanceScore := relevanceScores[i]
 			if relevanceScore >= relevanceThreshold {
-				log.Printf("Document relevant: ID=%s, SearchScore=%.4f, RelevanceScore=%.1f",
-					result.Article.ID, result.Score, relevanceScore)
+				relevanceLogger.Debug().
+					Str("article_id", result.Article.ID).
+					Float64("search_score", result.Score).
+					Float64("relevance_score", relevanceScore).
+					Msg("Document passed relevance check")
 
 				// Optionally adjust the final score based on relevance
 				// Combine search score (70%) with relevance score normalized to 0-1 (30%)
@@ -487,18 +530,27 @@ Provide only scores without additional explanations.`
 
 				filteredResults = append(filteredResults, result)
 			} else {
-				log.Printf("Document filtered (low relevance): ID=%s, SearchScore=%.4f, RelevanceScore=%.1f",
-					result.Article.ID, result.Score, relevanceScore)
+				relevanceLogger.Debug().
+					Str("article_id", result.Article.ID).
+					Float64("search_score", result.Score).
+					Float64("relevance_score", relevanceScore).
+					Float64("threshold", relevanceThreshold).
+					Msg("Document filtered out due to low relevance")
 			}
 		} else {
 			// If we couldn't parse the score, keep the result
-			log.Printf("Document kept (unparsed relevance): ID=%s, SearchScore=%.4f",
-				result.Article.ID, result.Score)
+			relevanceLogger.Debug().
+				Str("article_id", result.Article.ID).
+				Float64("search_score", result.Score).
+				Msg("Document kept (unparsed relevance)")
 			filteredResults = append(filteredResults, result)
 		}
 	}
 
-	log.Printf("Relevance filtering: %d -> %d documents", len(results), len(filteredResults))
+	relevanceLogger.Info().
+		Int("original_count", len(results)).
+		Int("filtered_count", len(filteredResults)).
+		Msg("Relevance filtering completed")
 
 	return filteredResults, nil
 }

@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"fmt"
-	"log"
 
 	"github.com/snowmerak/open-librarian/lib/client/opensearch"
 	"github.com/snowmerak/open-librarian/lib/util/logger"
@@ -242,8 +241,11 @@ Answer (Markdown format):`
 		context += "\n"
 	}
 
-	log.Printf("Answer generation: Using %d articles (content: %d, summary: %d)",
-		len(articles), contentUsageCount, summaryUsageCount)
+	answerLogger.Info().
+		Int("total_articles", len(articles)).
+		Int("content_usage", contentUsageCount).
+		Int("summary_usage", summaryUsageCount).
+		Msg("Article content usage statistics")
 
 	// Create prompt for answer generation
 	prompt := ""
@@ -497,8 +499,11 @@ Answer (Markdown format):`
 		context += "\n"
 	}
 
-	log.Printf("Answer generation (streaming): Using %d articles (content: %d, summary: %d)",
-		len(articles), contentUsageCount, summaryUsageCount)
+	streamLogger.Info().
+		Int("total_articles", len(articles)).
+		Int("content_usage", contentUsageCount).
+		Int("summary_usage", summaryUsageCount).
+		Msg("Article content usage statistics for streaming")
 
 	// Create prompt for answer generation
 	prompt := ""

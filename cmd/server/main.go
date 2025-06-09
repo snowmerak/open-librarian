@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -53,7 +52,6 @@ func main() {
 		mainLogger.Info().Int("qdrant_port", qdrantPort).Msg("Qdrant port parsed successfully")
 	} else {
 		mainLogger.Warn().Err(err).Str("qdrant_port_str", qdrantPortStr).Int("default_port", 6334).Msg("Invalid QDRANT_PORT, using default")
-		log.Printf("Invalid QDRANT_PORT '%s', using default 6334", qdrantPortStr)
 	}
 
 	// Initialize API server
@@ -61,7 +59,8 @@ func main() {
 	apiServer, err := api.NewServer(ollamaURL, opensearchURL, qdrantHost, mongoURI, jwtSecret, qdrantPort)
 	if err != nil {
 		apiInitLogger.EndWithError(err)
-		log.Fatalf("Failed to create API server: %v", err)
+		mainLogger.Error().Err(err).Msg("Failed to create API server")
+		os.Exit(1)
 	}
 	httpServer := api.NewHTTPServer(apiServer)
 	apiInitLogger.EndWithMsg("API server initialization complete")
@@ -91,15 +90,16 @@ func main() {
 			Str("api_url", fmt.Sprintf("http://localhost:%s/api/", port)).
 			Msg("Server endpoints configured")
 
-		log.Printf("Starting server on port %s", port)
-		log.Printf("Swagger UI available at: http://localhost:%s/swagger/", port)
-		log.Printf("Health check at: http://localhost:%s/health", port)
-		log.Printf("Public files served from: http://localhost:%s/public/", port)
-		log.Printf("API available at: http://localhost:%s/api/", port)
+		serverLogger.Info().Str("port", port).Msg("Starting server")
+		serverLogger.Info().Str("swagger_url", fmt.Sprintf("http://localhost:%s/swagger/", port)).Msg("Swagger UI available")
+		serverLogger.Info().Str("health_url", fmt.Sprintf("http://localhost:%s/health", port)).Msg("Health check endpoint available")
+		serverLogger.Info().Str("public_url", fmt.Sprintf("http://localhost:%s/public/", port)).Msg("Public files endpoint available")
+		serverLogger.Info().Str("api_url", fmt.Sprintf("http://localhost:%s/api/", port)).Msg("API endpoint available")
 
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			serverLogger.EndWithError(err)
-			log.Fatalf("Server failed to start: %v", err)
+			mainLogger.Error().Err(err).Msg("Server failed to start")
+			os.Exit(1)
 		}
 	}()
 	serverLogger.EndWithMsg("HTTP server started successfully")
@@ -110,7 +110,7 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	sig := <-quit
 	shutdownLogger.Info().Str("signal", sig.String()).Msg("Shutdown signal received")
-	log.Println("Shutting down server...")
+	shutdownLogger.Info().Msg("Shutting down server")
 
 	// Graceful shutdown with timeout
 	shutdownLogger.Info().Msg("Starting graceful shutdown")
@@ -119,11 +119,12 @@ func main() {
 
 	if err := server.Shutdown(ctx); err != nil {
 		shutdownLogger.EndWithError(err)
-		log.Fatalf("Server forced to shutdown: %v", err)
+		mainLogger.Error().Err(err).Msg("Server forced to shutdown")
+		os.Exit(1)
 	}
 
 	shutdownLogger.EndWithMsg("Graceful shutdown completed")
-	log.Println("Server exited")
+	shutdownLogger.Info().Msg("Server exited")
 }
 
 func setupRouter(httpServer *api.HTTPServer) *chi.Mux {

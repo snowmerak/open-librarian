@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"time"
 
@@ -177,29 +176,38 @@ func (c *Client) IndexArticle(ctx context.Context, article *Article) (*IndexResp
 
 // KeywordSearch performs traditional keyword-based search
 func (c *Client) KeywordSearch(ctx context.Context, query, lang string, size, from int) (*SearchResponse, error) {
+	searchLogger := logger.NewLogger("opensearch-keyword-search")
+	searchLogger.StartWithMsg("Starting OpenSearch keyword search")
+
 	if size == 0 {
 		size = 10
 	}
 
-	log.Printf("=== OpenSearch KeywordSearch START ===")
-	log.Printf("Query: '%s', Lang: '%s', Size: %d, From: %d", query, lang, size, from)
+	searchLogger.Info().
+		Str("query", query).
+		Str("language", lang).
+		Int("size", size).
+		Int("from", from).
+		Msg("Start keyword search")
 
 	searchQuery := c.buildKeywordQuery(query, lang, size, from)
 
 	// Log the search query
 	queryJSON, _ := json.MarshalIndent(searchQuery, "", "  ")
-	log.Printf("OpenSearch Query:\n%s", string(queryJSON))
+	searchLogger.Debug().Str("search_query", string(queryJSON)).Msg("Generated search query")
 
 	reqBody, err := json.Marshal(searchQuery)
 	if err != nil {
+		searchLogger.EndWithError(err)
 		return nil, fmt.Errorf("failed to marshal query: %w", err)
 	}
 
 	url := fmt.Sprintf("%s/%s/_search", c.baseURL, DefaultIndexName)
-	log.Printf("OpenSearch URL: %s", url)
+	searchLogger.Info().Str("url", url).Msg("Search request URL")
 
 	httpReq, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(reqBody))
 	if err != nil {
+		searchLogger.EndWithError(err)
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
@@ -207,23 +215,29 @@ func (c *Client) KeywordSearch(ctx context.Context, query, lang string, size, fr
 
 	resp, err := c.httpClient.Do(httpReq)
 	if err != nil {
+		searchLogger.EndWithError(err)
 		return nil, fmt.Errorf("failed to send request: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		log.Printf("OpenSearch error response (status %d): %s", resp.StatusCode, string(body))
+		searchLogger.Error().
+			Int("status_code", resp.StatusCode).
+			Str("response_body", string(body)).
+			Msg("OpenSearch error response")
+		searchLogger.EndWithError(fmt.Errorf("search failed with status %d", resp.StatusCode))
 		return nil, fmt.Errorf("search failed with status %d: %s", resp.StatusCode, string(body))
 	}
 
 	// Read response body for logging
 	responseBody, err := io.ReadAll(resp.Body)
 	if err != nil {
+		searchLogger.EndWithError(err)
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	log.Printf("OpenSearch raw response: %s", string(responseBody))
+	searchLogger.Debug().Str("raw_response", string(responseBody)).Msg("OpenSearch raw response")
 
 	var esResp struct {
 		Took int `json:"took"`
@@ -240,11 +254,15 @@ func (c *Client) KeywordSearch(ctx context.Context, query, lang string, size, fr
 	}
 
 	if err := json.Unmarshal(responseBody, &esResp); err != nil {
+		searchLogger.EndWithError(err)
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
 
-	log.Printf("OpenSearch parsed response: Total=%d, Hits=%d, Took=%d",
-		esResp.Hits.Total.Value, len(esResp.Hits.Hits), esResp.Took)
+	searchLogger.Info().
+		Int("total_results", esResp.Hits.Total.Value).
+		Int("returned_hits", len(esResp.Hits.Hits)).
+		Int("took_ms", esResp.Took).
+		Msg("OpenSearch search completed")
 
 	results := make([]SearchResult, len(esResp.Hits.Hits))
 	for i, hit := range esResp.Hits.Hits {
@@ -253,8 +271,12 @@ func (c *Client) KeywordSearch(ctx context.Context, query, lang string, size, fr
 			Score:   hit.Score,
 		}
 		results[i].Article.ID = hit.ID
-		log.Printf("OpenSearch result #%d: ID=%s, Score=%.4f, Title='%s'",
-			i+1, hit.ID, hit.Score, hit.Source.Title)
+		searchLogger.Debug().
+			Int("result_index", i+1).
+			Str("article_id", hit.ID).
+			Float64("score", hit.Score).
+			Str("title", hit.Source.Title).
+			Msg("Search result")
 	}
 
 	response := &SearchResponse{
@@ -263,7 +285,7 @@ func (c *Client) KeywordSearch(ctx context.Context, query, lang string, size, fr
 		Took:    esResp.Took,
 	}
 
-	log.Printf("=== OpenSearch KeywordSearch END ===")
+	searchLogger.EndWithMsg("OpenSearch keyword search completed successfully")
 	return response, nil
 }
 
