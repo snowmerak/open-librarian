@@ -523,11 +523,15 @@ async function handleStreamSearch(query) {
 
         ws.onerror = function(error) {
             console.error('WebSocket error:', error);
+            console.error('WebSocket URL was:', wsUrl);
+            console.error('WebSocket readyState:', ws.readyState);
             throw new Error('WebSocket connection failed');
         };
 
-        ws.onclose = function() {
+        ws.onclose = function(event) {
             console.log('WebSocket connection closed');
+            console.log('Close code:', event.code, 'Close reason:', event.reason);
+            console.log('WebSocket URL was:', wsUrl);
         };
 
     } catch (error) {

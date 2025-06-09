@@ -42,13 +42,16 @@ func (h *HTTPServer) SetupRoutes() *chi.Mux {
 
 	// API routes
 	router.Route("/api/v1", func(r chi.Router) {
+		// WebSocket routes (handle authentication internally)
+		r.Get("/articles/ws", h.WebSocketAddArticleHandler)
+		r.Get("/articles/bulk/ws", h.WebSocketBulkAddArticleHandler)
+		r.Get("/search/ws", h.WebSocketSearchHandler)
+
 		// Articles (protected routes)
 		r.Group(func(r chi.Router) {
 			r.Use(h.server.JWTMiddleware(h.server.jwtService))
 			r.Post("/articles", h.AddArticleHandler)
 			r.Delete("/articles/{id}", h.DeleteArticleHandler)
-			r.Get("/articles/ws", h.WebSocketAddArticleHandler)
-			r.Get("/articles/bulk/ws", h.WebSocketBulkAddArticleHandler)
 		})
 
 		// Articles (public routes)

@@ -373,6 +373,8 @@ async function processIndividualArticleWithWebSocket(articleData, articleTitle) 
         // WebSocket 오류 처리
         ws.onerror = function(error) {
             console.error('WebSocket error for article:', articleTitle, error);
+            console.error('WebSocket URL was:', wsUrl);
+            console.error('WebSocket readyState:', ws.readyState);
             if (!hasCompleted) {
                 hasCompleted = true;
                 // WebSocket 실패 시 HTTP로 폴백
@@ -383,10 +385,13 @@ async function processIndividualArticleWithWebSocket(articleData, articleTitle) 
         };
         
         // WebSocket 연결 종료
-        ws.onclose = function() {
+        ws.onclose = function(event) {
             console.log('WebSocket connection closed for article:', articleTitle);
+            console.log('Close code:', event.code, 'Close reason:', event.reason);
+            console.log('WebSocket URL was:', wsUrl);
             if (!hasCompleted) {
                 hasCompleted = true;
+                console.log('WebSocket closed unexpectedly, falling back to HTTP');
                 // 정상적인 완료가 아닌 경우 HTTP로 폴백
                 fallbackToHttpUpload(articleData)
                     .then(resolve)
@@ -409,10 +414,17 @@ async function processIndividualArticleWithWebSocket(articleData, articleTitle) 
 async function fallbackToHttpUpload(articleData) {
     console.log('Falling back to HTTP upload for article:', articleData.title);
     
+    // JWT 토큰 확인
+    const token = getJWTToken();
+    if (!token) {
+        throw new Error('Authentication required');
+    }
+    
     const response = await fetch(`${API_BASE_URL}/api/v1/articles`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify(articleData)
     });
@@ -501,12 +513,16 @@ async function handleWebSocketArticleAddition(articleData, button, originalText)
 
             ws.onerror = function(error) {
                 console.error('WebSocket error:', error);
+                console.error('WebSocket URL was:', wsUrl);
+                console.error('WebSocket readyState:', ws.readyState);
                 removeArticleProgressUI();
                 reject(new Error('WebSocket connection failed'));
             };
 
-            ws.onclose = function() {
+            ws.onclose = function(event) {
                 console.log('WebSocket connection closed');
+                console.log('Close code:', event.code, 'Close reason:', event.reason);
+                console.log('WebSocket URL was:', wsUrl);
                 if (!completed) {
                     removeArticleProgressUI();
                     reject(new Error('WebSocket connection closed unexpectedly'));
