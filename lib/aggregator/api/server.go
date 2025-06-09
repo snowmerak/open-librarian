@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/snowmerak/open-librarian/lib/client/mongo"
 	"github.com/snowmerak/open-librarian/lib/client/ollama"
 	"github.com/snowmerak/open-librarian/lib/client/opensearch"
 	"github.com/snowmerak/open-librarian/lib/client/qdrant"
@@ -15,11 +16,12 @@ type Server struct {
 	ollamaClient     *ollama.Client
 	opensearchClient *opensearch.Client
 	qdrantClient     *qdrant.Client
+	mongoClient      *mongo.Client
 	languageDetector *language.Detector
 }
 
 // NewServer creates a new API server instance
-func NewServer(ollamaBaseURL, opensearchBaseURL, qdrantHost string, qdrantPort int) (*Server, error) {
+func NewServer(ollamaBaseURL, opensearchBaseURL, qdrantHost, mongoURI string, qdrantPort int) (*Server, error) {
 	qdrantClient, err := qdrant.NewClient(qdrantHost, qdrantPort)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Qdrant client: %w", err)
@@ -31,10 +33,26 @@ func NewServer(ollamaBaseURL, opensearchBaseURL, qdrantHost string, qdrantPort i
 		return nil, fmt.Errorf("failed to initialize Qdrant collection: %w", err)
 	}
 
+	// Create MongoDB client
+	mongoClient, err := mongo.New(mongoURI)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create MongoDB client: %w", err)
+	}
+
+	// Test MongoDB connection and initialize database
+	if err := mongoClient.Connect(ctx); err != nil {
+		return nil, fmt.Errorf("failed to connect to MongoDB: %w", err)
+	}
+
+	if err := mongoClient.InitializeDatabase(ctx); err != nil {
+		return nil, fmt.Errorf("failed to initialize MongoDB database: %w", err)
+	}
+
 	return &Server{
 		ollamaClient:     ollama.NewClient(ollamaBaseURL),
 		opensearchClient: opensearch.NewClient(opensearchBaseURL),
 		qdrantClient:     qdrantClient,
+		mongoClient:      mongoClient,
 		languageDetector: language.NewDetector(),
 	}, nil
 }
@@ -54,6 +72,11 @@ func (s *Server) HealthCheck(ctx context.Context) error {
 	// Check Qdrant
 	if err := s.qdrantClient.HealthCheck(ctx); err != nil {
 		return fmt.Errorf("qdrant health check failed: %w", err)
+	}
+
+	// Check MongoDB
+	if err := s.mongoClient.Connect(ctx); err != nil {
+		return fmt.Errorf("mongodb health check failed: %w", err)
 	}
 
 	return nil

@@ -61,6 +61,9 @@ func (h *HTTPServer) SetupRoutes() *chi.Mux {
 		r.Get("/search/keyword", h.KeywordSearchHandler)
 		r.Get("/search/ws", h.WebSocketSearchHandler)
 
+		// Users
+		h.server.RegisterUserRoutes(r)
+
 		// Utilities
 		r.Get("/languages", h.GetSupportedLanguagesHandler)
 
