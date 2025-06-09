@@ -64,6 +64,25 @@ services:
     networks:
       - opensearch-net
 
+  mongodb:
+    image: mongo:7.0
+    container_name: mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=password
+      - MONGO_INITDB_DATABASE=open_librarian
+    volumes:
+      - mongodb-data:/data/db
+    networks:
+      - opensearch-net
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --eval 'db.adminCommand(\"ping\")' --quiet"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
   open-librarian-server:
     build:
       context: .
@@ -77,11 +96,14 @@ services:
       - OLLAMA_URL=http://host.docker.internal:11434
       - QDRANT_HOST=qdrant
       - QDRANT_PORT=6334
+      - MONGODB_URI=mongodb://admin:password@mongodb:27017/open_librarian?authSource=admin
     depends_on:
       opensearch:
         condition: service_healthy
       qdrant:
         condition: service_started
+      mongodb:
+        condition: service_healthy
     networks:
       - opensearch-net
     healthcheck:
@@ -94,6 +116,7 @@ services:
 volumes:
   opensearch-data:
   qdrant-data:
+  mongodb-data:
 
 networks:
   opensearch-net:
