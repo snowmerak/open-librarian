@@ -30,6 +30,7 @@ type Article struct {
 	OriginalURL string    `json:"original_url,omitempty"`
 	Author      string    `json:"author,omitempty"`
 	CreatedDate time.Time `json:"created_date"`
+	Registrar   string    `json:"registrar,omitempty"`
 }
 
 // SearchRequest represents a search query
@@ -103,6 +104,7 @@ func (c *Client) IndexArticle(ctx context.Context, article *Article) (*IndexResp
 		"original_url": article.OriginalURL,
 		"author":       article.Author,
 		"created_date": article.CreatedDate,
+		"registrar":    article.Registrar,
 	}
 
 	reqBody, err := json.Marshal(doc)
@@ -310,6 +312,9 @@ func (c *Client) CreateIndexWithMapping(ctx context.Context) error {
 				},
 				"created_date": map[string]interface{}{
 					"type": "date",
+				},
+				"registrar": map[string]interface{}{
+					"type": "keyword",
 				},
 			},
 		},
@@ -568,4 +573,31 @@ func (c *Client) DetectQueryLanguage(query string) string {
 // GetSupportedLanguages returns supported language codes
 func (c *Client) GetSupportedLanguages() []string {
 	return c.languageDetector.GetSupportedLanguages()
+}
+
+// DeleteArticle deletes an article from the index
+func (c *Client) DeleteArticle(ctx context.Context, id string) error {
+	url := fmt.Sprintf("%s/%s/_doc/%s", c.baseURL, DefaultIndexName, id)
+
+	req, err := http.NewRequestWithContext(ctx, "DELETE", url, nil)
+	if err != nil {
+		return fmt.Errorf("failed to create delete request: %w", err)
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to execute delete request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return fmt.Errorf("article with id %s not found", id)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("delete request failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	return nil
 }

@@ -6,12 +6,23 @@ import (
 	"log"
 	"time"
 
+	"github.com/snowmerak/open-librarian/lib/client/mongo"
 	"github.com/snowmerak/open-librarian/lib/client/opensearch"
 )
 
 // AddArticle processes and indexes a new article
 func (s *Server) AddArticle(ctx context.Context, req *ArticleRequest) (*ArticleResponse, error) {
 	log.Printf("Processing article: %s", req.Title)
+
+	// Extract user information from context
+	var registrar string
+	if user, ok := ctx.Value(UserContextKey).(*mongo.User); ok {
+		registrar = user.Username
+		log.Printf("Article being registered by user: %s", registrar)
+	} else {
+		log.Printf("No user context found - this should not happen for authenticated endpoints")
+		return nil, fmt.Errorf("authentication required")
+	}
 
 	// 1. Check for duplicate articles based on title and content similarity
 	isDuplicate, existingID, err := s.checkDuplicateArticle(ctx, req.Title, req.Content)
@@ -121,6 +132,7 @@ Keywords:`, req.Content)
 		OriginalURL: req.OriginalURL,
 		Author:      req.Author,
 		CreatedDate: createdDate,
+		Registrar:   registrar,
 	}
 
 	// 7. Index in OpenSearch (text data only)
@@ -154,6 +166,16 @@ Keywords:`, req.Content)
 // AddArticleWithProgress processes and indexes a new article with progress callbacks
 func (s *Server) AddArticleWithProgress(ctx context.Context, req *ArticleRequest, progressCallback ProgressCallback) (*ArticleResponse, error) {
 	log.Printf("Processing article with progress tracking: %s", req.Title)
+
+	// Extract user information from context
+	var registrar string
+	if user, ok := ctx.Value(UserContextKey).(*mongo.User); ok {
+		registrar = user.Username
+		log.Printf("Article being registered by user: %s", registrar)
+	} else {
+		log.Printf("No user context found - this should not happen for authenticated endpoints")
+		return nil, fmt.Errorf("authentication required")
+	}
 
 	totalSteps := 8
 	currentStep := 0
@@ -309,6 +331,7 @@ Keywords:`, req.Content)
 		OriginalURL: req.OriginalURL,
 		Author:      req.Author,
 		CreatedDate: createdDate,
+		Registrar:   registrar,
 	}
 
 	indexResp, err := s.opensearchClient.IndexArticle(ctx, article)
@@ -448,4 +471,48 @@ func (s *Server) checkDuplicateArticle(ctx context.Context, title, content strin
 	}
 
 	return false, "", nil
+}
+
+// DeleteArticle removes an article from both OpenSearch and Qdrant
+func (s *Server) DeleteArticle(ctx context.Context, id string) error {
+	log.Printf("Deleting article with ID: %s", id)
+
+	// First, get the article to check if it exists and verify permissions
+	article, err := s.opensearchClient.GetArticle(ctx, id)
+	if err != nil {
+		log.Printf("Failed to get article for deletion: %v", err)
+		return fmt.Errorf("article not found: %w", err)
+	}
+
+	// Extract user information from context for permission check
+	if user, ok := ctx.Value(UserContextKey).(*mongo.User); ok {
+		// Check if the user is the registrar of the article
+		if article.Registrar != user.Username {
+			log.Printf("User %s attempted to delete article registered by %s", user.Username, article.Registrar)
+			return fmt.Errorf("permission denied: only the registrar can delete this article")
+		}
+		log.Printf("Article deletion authorized for user: %s", user.Username)
+	} else {
+		log.Printf("No user context found for deletion request")
+		return fmt.Errorf("authentication required")
+	}
+
+	// Delete from OpenSearch
+	err = s.opensearchClient.DeleteArticle(ctx, id)
+	if err != nil {
+		log.Printf("Failed to delete article from OpenSearch: %v", err)
+		return fmt.Errorf("failed to delete from search index: %w", err)
+	}
+
+	// Delete from Qdrant (vector database)
+	err = s.qdrantClient.DeletePoint(ctx, id)
+	if err != nil {
+		log.Printf("Failed to delete article from Qdrant: %v", err)
+		// Don't fail the entire operation if Qdrant deletion fails
+		// Log the error but continue
+		log.Printf("Warning: Article deleted from OpenSearch but not from Qdrant")
+	}
+
+	log.Printf("Successfully deleted article: %s", id)
+	return nil
 }

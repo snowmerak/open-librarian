@@ -5,6 +5,7 @@ go 1.24.3
 require (
 	github.com/go-chi/chi/v5 v5.2.1
 	github.com/go-chi/cors v1.2.1
+	github.com/golang-jwt/jwt/v5 v5.2.2
 	github.com/gorilla/websocket v1.5.3
 	github.com/pemistahl/lingua-go v1.4.0
 	github.com/qdrant/go-client v1.14.0
@@ -13,7 +14,6 @@ require (
 )
 
 require (
-	github.com/golang-jwt/jwt/v5 v5.2.2 // indirect
 	github.com/golang/snappy v1.0.0 // indirect
 	github.com/klauspost/compress v1.17.4 // indirect
 	github.com/shopspring/decimal v1.3.1 // indirect

@@ -177,7 +177,8 @@ curl_result=$(curl -X PUT "http://localhost:9200/open-librarian-articles" -H "Co
       "tags": { "type": "keyword" },
       "original_url": { "type": "keyword" },
       "author": { "type": "keyword" },
-      "created_date": { "type": "date" }
+      "created_date": { "type": "date" },
+      "registrar": { "type": "keyword" }
     }
   }
 }')

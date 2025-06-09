@@ -1,9 +1,11 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -186,6 +188,42 @@ func (h *HTTPServer) WebSocketSearchHandler(w http.ResponseWriter, r *http.Reque
 func (h *HTTPServer) WebSocketAddArticleHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
+	// Check for authentication before upgrading WebSocket
+	authHeader := r.Header.Get("Authorization")
+	if authHeader == "" {
+		http.Error(w, "Authorization header required", http.StatusUnauthorized)
+		return
+	}
+
+	if !strings.HasPrefix(authHeader, "Bearer ") {
+		http.Error(w, "Authorization header must start with 'Bearer '", http.StatusUnauthorized)
+		return
+	}
+
+	tokenString := strings.TrimPrefix(authHeader, "Bearer ")
+	if tokenString == "" {
+		http.Error(w, "Token required", http.StatusUnauthorized)
+		return
+	}
+
+	// Validate token
+	claims, err := h.server.jwtService.ValidateToken(tokenString)
+	if err != nil {
+		http.Error(w, "Invalid token", http.StatusUnauthorized)
+		return
+	}
+
+	// Get user from database
+	user, err := h.server.mongoClient.GetUserFromToken(ctx, tokenString, h.server.jwtService)
+	if err != nil {
+		http.Error(w, "User not found", http.StatusUnauthorized)
+		return
+	}
+
+	// Add user and claims to context
+	ctx = context.WithValue(ctx, UserContextKey, user)
+	ctx = context.WithValue(ctx, ClaimsContextKey, claims)
+
 	// WebSocket upgrade
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -194,7 +232,7 @@ func (h *HTTPServer) WebSocketAddArticleHandler(w http.ResponseWriter, r *http.R
 	}
 	defer conn.Close()
 
-	log.Println("WebSocket connection established for article addition")
+	log.Printf("WebSocket connection established for article addition by user: %s", user.Username)
 
 	// Wait for incoming messages
 	for {
@@ -282,6 +320,42 @@ func (h *HTTPServer) WebSocketAddArticleHandler(w http.ResponseWriter, r *http.R
 func (h *HTTPServer) WebSocketBulkAddArticleHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
+	// Check for authentication before upgrading WebSocket
+	authHeader := r.Header.Get("Authorization")
+	if authHeader == "" {
+		http.Error(w, "Authorization header required", http.StatusUnauthorized)
+		return
+	}
+
+	if !strings.HasPrefix(authHeader, "Bearer ") {
+		http.Error(w, "Authorization header must start with 'Bearer '", http.StatusUnauthorized)
+		return
+	}
+
+	tokenString := strings.TrimPrefix(authHeader, "Bearer ")
+	if tokenString == "" {
+		http.Error(w, "Token required", http.StatusUnauthorized)
+		return
+	}
+
+	// Validate token
+	claims, err := h.server.jwtService.ValidateToken(tokenString)
+	if err != nil {
+		http.Error(w, "Invalid token", http.StatusUnauthorized)
+		return
+	}
+
+	// Get user from database
+	user, err := h.server.mongoClient.GetUserFromToken(ctx, tokenString, h.server.jwtService)
+	if err != nil {
+		http.Error(w, "User not found", http.StatusUnauthorized)
+		return
+	}
+
+	// Add user and claims to context
+	ctx = context.WithValue(ctx, UserContextKey, user)
+	ctx = context.WithValue(ctx, ClaimsContextKey, claims)
+
 	// WebSocket upgrade
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -290,7 +364,7 @@ func (h *HTTPServer) WebSocketBulkAddArticleHandler(w http.ResponseWriter, r *ht
 	}
 	defer conn.Close()
 
-	log.Println("WebSocket connection established for bulk article addition")
+	log.Printf("WebSocket connection established for bulk article addition by user: %s", user.Username)
 
 	// Wait for incoming messages
 	for {

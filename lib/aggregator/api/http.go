@@ -49,11 +49,17 @@ func (h *HTTPServer) SetupRoutes() *chi.Mux {
 
 	// API routes
 	router.Route("/api/v1", func(r chi.Router) {
-		// Articles
-		r.Post("/articles", h.AddArticleHandler)
+		// Articles (protected routes)
+		r.Group(func(r chi.Router) {
+			r.Use(h.server.JWTMiddleware(h.server.jwtService))
+			r.Post("/articles", h.AddArticleHandler)
+			r.Delete("/articles/{id}", h.DeleteArticleHandler)
+			r.Get("/articles/ws", h.WebSocketAddArticleHandler)
+			r.Get("/articles/bulk/ws", h.WebSocketBulkAddArticleHandler)
+		})
+
+		// Articles (public routes)
 		r.Get("/articles/{id}", h.GetArticleHandler)
-		r.Get("/articles/ws", h.WebSocketAddArticleHandler)
-		r.Get("/articles/bulk/ws", h.WebSocketBulkAddArticleHandler)
 
 		// Search
 		r.Post("/search", h.SearchHandler)

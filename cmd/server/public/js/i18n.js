@@ -69,6 +69,13 @@ const TRANSLATIONS = {
         removeResult: 'Remove result',
         searchingInProgress: 'Searching...',
         
+        // Article Actions
+        deleteArticle: 'Delete Article',
+        deleteConfirm: 'Are you sure you want to delete this article?',
+        deleteSuccess: 'Article deleted successfully',
+        deleteError: 'Failed to delete article',
+        deletePermissionDenied: 'Only the registrar can delete this article',
+        
         // Language Settings
         language: 'Language',
         languages: {
@@ -147,6 +154,13 @@ const TRANSLATIONS = {
         hoursAgo: '시간 전',
         removeResult: '결과 삭제',
         searchingInProgress: '검색 중...',
+        
+        // Article Actions
+        deleteArticle: '아티클 삭제',
+        deleteConfirm: '이 아티클을 삭제하시겠습니까?',
+        deleteSuccess: '아티클이 성공적으로 삭제되었습니다',
+        deleteError: '아티클 삭제에 실패했습니다',
+        deletePermissionDenied: '등록자만 이 아티클을 삭제할 수 있습니다',
         
         // Language Settings
         language: '언어',
@@ -227,6 +241,13 @@ const TRANSLATIONS = {
         removeResult: '移除结果',
         searchingInProgress: '搜索中...',
         
+        // Article Actions
+        deleteArticle: '删除文章',
+        deleteConfirm: '确定要删除这篇文章吗？',
+        deleteSuccess: '文章删除成功',
+        deleteError: '删除文章失败',
+        deletePermissionDenied: '只有注册者可以删除这篇文章',
+        
         // Language Settings
         language: '语言',
         languages: {
@@ -305,6 +326,13 @@ const TRANSLATIONS = {
         hoursAgo: '時間前',
         removeResult: '結果を削除',
         searchingInProgress: '検索中...',
+        
+        // Article Actions
+        deleteArticle: '記事削除',
+        deleteConfirm: 'この記事を削除しますか？',
+        deleteSuccess: '記事が正常に削除されました',
+        deleteError: '記事の削除に失敗しました',
+        deletePermissionDenied: '登録者のみがこの記事を削除できます',
         
         // Language Settings
         language: '言語',

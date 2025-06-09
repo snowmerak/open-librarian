@@ -223,15 +223,26 @@ function displaySearchResult(query, data) {
                         const author = article.author || 'Unknown';
                         const url = article.original_url || '#';
                         const score = source.score ? (source.score * 100).toFixed(2) : '0.00';
+                        const articleId = article.id || '';
                         
                         const createdDate = article.created_date ? formatCreatedDate(article.created_date) : '';
                         const authorWithDate = createdDate ? `${escapeHtml(author)} • ${t('createdAt')}: ${createdDate}` : escapeHtml(author);
                         
                         return `
-                            <div class="source-card" onclick="window.open('${escapeHtml(url)}', '_blank')">
+                            <div class="source-card relative" onclick="window.open('${escapeHtml(url)}', '_blank')">
                                 <div class="flex justify-between items-start mb-2">
                                     <div class="font-semibold text-indigo-700 flex-1">${escapeHtml(title)}</div>
-                                    <div class="text-xs text-slate-500 ml-2 bg-slate-100 px-2 py-1 rounded">${score}%</div>
+                                    <div class="flex items-center gap-2">
+                                        <div class="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded">${score}%</div>
+                                        ${articleId ? `<button onclick="event.stopPropagation(); deleteArticle('${articleId}', '${escapeHtml(title)}')" data-article-id="${articleId}" class="text-red-500 hover:text-red-700 p-1 rounded hover:bg-red-50 transition-colors" title="${t('deleteArticle')}">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <polyline points="3,6 5,6 21,6"></polyline>
+                                                <path d="m19,6v14a2,2 0 0 1-2,2H7a2,2 0 0 1-2-2V6m3,0V4a2,2 0 0 1 2-2h4a2,2 0 0 1 2,2v2"></path>
+                                                <line x1="10" y1="11" x2="10" y2="17"></line>
+                                                <line x1="14" y1="11" x2="14" y2="17"></line>
+                                            </svg>
+                                        </button>` : ''}
+                                    </div>
                                 </div>
                                 <p class="text-sm text-slate-600 mb-2">${escapeHtml(displayText.substring(0, 150))}...</p>
                                 <div class="text-xs text-slate-400">${authorWithDate}</div>
@@ -592,15 +603,26 @@ function displayStreamingSources(sources, sessionId) {
         const author = article.author || 'Unknown';
         const url = article.original_url || '#';
         const score = source.score ? (source.score * 100).toFixed(2) : '0.00';
+        const articleId = article.id || '';
         
         const createdDate = article.created_date ? formatCreatedDate(article.created_date) : '';
         const authorWithDate = createdDate ? `${escapeHtml(author)} • ${t('createdAt')}: ${createdDate}` : escapeHtml(author);
         
         sourcesHtml += `
-            <div class="source-card" onclick="window.open('${escapeHtml(url)}', '_blank')">
+            <div class="source-card relative" onclick="window.open('${escapeHtml(url)}', '_blank')">
                 <div class="flex justify-between items-start mb-2">
                     <div class="font-semibold text-indigo-700 flex-1">${escapeHtml(title)}</div>
-                    <div class="text-xs text-slate-500 ml-2 bg-slate-100 px-2 py-1 rounded">${score}%</div>
+                    <div class="flex items-center gap-2">
+                        <div class="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded">${score}%</div>
+                        ${articleId ? `<button onclick="event.stopPropagation(); deleteArticle('${articleId}', '${escapeHtml(title)}')" data-article-id="${articleId}" class="text-red-500 hover:text-red-700 p-1 rounded hover:bg-red-50 transition-colors" title="${t('deleteArticle')}">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="3,6 5,6 21,6"></polyline>
+                                <path d="m19,6v14a2,2 0 0 1-2,2H7a2,2 0 0 1-2-2V6m3,0V4a2,2 0 0 1 2-2h4a2,2 0 0 1 2,2v2"></path>
+                                <line x1="10" y1="11" x2="10" y2="17"></line>
+                                <line x1="14" y1="11" x2="14" y2="17"></line>
+                            </svg>
+                        </button>` : ''}
+                    </div>
                 </div>
                 <p class="text-sm text-slate-600 mb-2">${escapeHtml(displayText.substring(0, 150))}...</p>
                 <div class="text-xs text-slate-400">${authorWithDate}</div>

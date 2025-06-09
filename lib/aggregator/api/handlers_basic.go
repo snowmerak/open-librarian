@@ -306,3 +306,31 @@ func (h *HTTPServer) ExternalKeywordSearchHandler(w http.ResponseWriter, r *http
 
 	writeJSONResponse(w, http.StatusOK, resp)
 }
+
+// DeleteArticleHandler handles article deletion requests
+func (h *HTTPServer) DeleteArticleHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	id := chi.URLParam(r, "id")
+	if id == "" {
+		writeErrorResponse(w, http.StatusBadRequest, "missing_id", "Article ID is required")
+		return
+	}
+
+	err := h.server.DeleteArticle(ctx, id)
+	if err != nil {
+		log.Printf("Error deleting article: %v", err)
+		if err.Error() == "article not found" {
+			writeErrorResponse(w, http.StatusNotFound, "not_found", "Article not found")
+			return
+		}
+		if err.Error() == "permission denied: only the registrar can delete this article" {
+			writeErrorResponse(w, http.StatusForbidden, "permission_denied", "Only the registrar can delete this article")
+			return
+		}
+		writeErrorResponse(w, http.StatusInternalServerError, "deletion_error", "Failed to delete article")
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
