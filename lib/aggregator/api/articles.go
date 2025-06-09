@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/snowmerak/open-librarian/lib/client/mongo"
@@ -72,7 +71,9 @@ Detailed Summary:`, req.Content)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate summary: %w", err)
 	}
-	log.Printf("Generated summary: %.100s...", summary)
+
+	summaryLogger := logger.NewLogger("summary_generation")
+	summaryLogger.Info().Str("summary_preview", fmt.Sprintf("%.100s...", summary)).Msg("Generated summary")
 
 	// 4. Generate tags using Ollama
 	tagsPrompt := fmt.Sprintf(`Extract 5 key keywords from the following text in English. Separate them with commas. Only return the keywords without any additional text.
@@ -122,14 +123,17 @@ Keywords:`, req.Content)
 		// Warn if the date is more than 10 years old (might be a mistake)
 		tenYearsAgo := now.AddDate(-10, 0, 0)
 		if parsed.Before(tenYearsAgo) {
-			log.Printf("Warning: Article created_date is more than 10 years old: %s", parsed.Format(time.RFC3339))
+			dateLogger := logger.NewLogger("date_validation")
+			dateLogger.Warn().Str("created_date", parsed.Format(time.RFC3339)).Msg("Article created_date is more than 10 years old")
 		}
 
 		createdDate = parsed
-		log.Printf("Using provided created_date: %s", createdDate.Format(time.RFC3339))
+		dateLogger := logger.NewLogger("date_validation")
+		dateLogger.Info().Str("created_date", createdDate.Format(time.RFC3339)).Msg("Using provided created_date")
 	} else {
 		createdDate = time.Now()
-		log.Printf("No created_date provided, using current time: %s", createdDate.Format(time.RFC3339))
+		dateLogger := logger.NewLogger("date_validation")
+		dateLogger.Info().Str("created_date", createdDate.Format(time.RFC3339)).Msg("No created_date provided, using current time")
 	}
 
 	// 6. Create article object (without embeddings for OpenSearch)
@@ -155,17 +159,20 @@ Keywords:`, req.Content)
 	// Index both title and summary embeddings
 	err = s.qdrantClient.UpsertPoint(ctx, indexResp.ID+"_title", titleEmbedding, lang)
 	if err != nil {
-		log.Printf("Failed to index title embedding in Qdrant, cleaning up OpenSearch entry")
+		vectorLogger := logger.NewLogger("vector_indexing")
+		vectorLogger.Error().Err(err).Msg("Failed to index title embedding in Qdrant, cleaning up OpenSearch entry")
 		return nil, fmt.Errorf("failed to index title vectors in Qdrant: %w", err)
 	}
 
 	err = s.qdrantClient.UpsertPoint(ctx, indexResp.ID+"_summary", summaryEmbedding, lang)
 	if err != nil {
-		log.Printf("Failed to index summary embedding in Qdrant, cleaning up OpenSearch entry")
+		vectorLogger := logger.NewLogger("vector_indexing")
+		vectorLogger.Error().Err(err).Msg("Failed to index summary embedding in Qdrant, cleaning up OpenSearch entry")
 		return nil, fmt.Errorf("failed to index summary vectors in Qdrant: %w", err)
 	}
 
-	log.Printf("Successfully indexed article with ID: %s", indexResp.ID)
+	indexLogger := logger.NewLogger("article_indexing")
+	indexLogger.Info().Str("article_id", indexResp.ID).Msg("Successfully indexed article")
 
 	return &ArticleResponse{
 		ID:      indexResp.ID,
@@ -175,15 +182,17 @@ Keywords:`, req.Content)
 
 // AddArticleWithProgress processes and indexes a new article with progress callbacks
 func (s *Server) AddArticleWithProgress(ctx context.Context, req *ArticleRequest, progressCallback ProgressCallback) (*ArticleResponse, error) {
-	log.Printf("Processing article with progress tracking: %s", req.Title)
+	progressLogger := logger.NewLogger("article_with_progress").StartWithMsg("Processing article with progress tracking")
+	progressLogger.Info().Str("title", req.Title).Msg("Starting article processing with progress tracking")
 
 	// Extract user information from context
 	var registrar string
 	if user, ok := ctx.Value(UserContextKey).(*mongo.User); ok {
 		registrar = user.Username
-		log.Printf("Article being registered by user: %s", registrar)
+		progressLogger.Info().Str("registrar", registrar).Msg("Article being registered by user")
 	} else {
-		log.Printf("No user context found - this should not happen for authenticated endpoints")
+		progressLogger.Error().Msg("No user context found - this should not happen for authenticated endpoints")
+		progressLogger.EndWithError(fmt.Errorf("authentication required"))
 		return nil, fmt.Errorf("authentication required")
 	}
 
@@ -205,10 +214,13 @@ func (s *Server) AddArticleWithProgress(ctx context.Context, req *ArticleRequest
 	}
 	isDuplicate, existingID, err := s.checkDuplicateArticle(ctx, req.Title, req.Content)
 	if err != nil {
-		log.Printf("Failed to check for duplicates: %v", err)
+		dupLogger := logger.NewLogger("duplicate_check")
+		dupLogger.Warn().Err(err).Msg("Failed to check for duplicates")
 		// Continue with indexing despite duplicate check failure
 	} else if isDuplicate {
-		log.Printf("Duplicate article detected, existing ID: %s", existingID)
+		dupLogger := logger.NewLogger("duplicate_check")
+		dupLogger.Info().Str("existing_id", existingID).Msg("Duplicate article detected")
+		progressLogger.EndWithMsg("Article processing complete - duplicate found")
 		return &ArticleResponse{
 			ID:      existingID,
 			Message: "Duplicate article found, returning existing article ID",
@@ -220,7 +232,8 @@ func (s *Server) AddArticleWithProgress(ctx context.Context, req *ArticleRequest
 		return nil, err
 	}
 	lang := s.languageDetector.DetectLanguage(req.Content)
-	log.Printf("Detected language: %s", lang)
+	langLogger := logger.NewLogger("language_detection")
+	langLogger.Info().Str("detected_language", lang).Msg("Language detection complete")
 
 	// 3. Generate summary using Ollama
 	if err := reportProgress("Generating summary..."); err != nil {
@@ -250,7 +263,8 @@ Detailed Summary:`, req.Content)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate summary: %w", err)
 	}
-	log.Printf("Generated summary: %.100s...", summary)
+	summaryLogger := logger.NewLogger("summary_generation")
+	summaryLogger.Info().Str("summary_preview", fmt.Sprintf("%.100s...", summary)).Msg("Generated summary")
 
 	// 4. Generate tags using Ollama
 	if err := reportProgress("Generating tags..."); err != nil {
@@ -318,14 +332,17 @@ Keywords:`, req.Content)
 		// Warn if the date is more than 10 years old (might be a mistake)
 		tenYearsAgo := now.AddDate(-10, 0, 0)
 		if parsed.Before(tenYearsAgo) {
-			log.Printf("Warning: Article created_date is more than 10 years old: %s", parsed.Format(time.RFC3339))
+			dateProgressLogger := logger.NewLogger("date_validation_progress")
+			dateProgressLogger.Warn().Str("created_date", parsed.Format(time.RFC3339)).Msg("Article created_date is more than 10 years old")
 		}
 
 		createdDate = parsed
-		log.Printf("Using provided created_date: %s", createdDate.Format(time.RFC3339))
+		dateProgressLogger := logger.NewLogger("date_validation_progress")
+		dateProgressLogger.Info().Str("created_date", createdDate.Format(time.RFC3339)).Msg("Using provided created_date")
 	} else {
 		createdDate = time.Now()
-		log.Printf("No created_date provided, using current time: %s", createdDate.Format(time.RFC3339))
+		dateProgressLogger := logger.NewLogger("date_validation_progress")
+		dateProgressLogger.Info().Str("created_date", createdDate.Format(time.RFC3339)).Msg("No created_date provided, using current time")
 	}
 
 	// 7. Create article object and index in OpenSearch
@@ -356,17 +373,21 @@ Keywords:`, req.Content)
 	// Index both title and summary embeddings
 	err = s.qdrantClient.UpsertPoint(ctx, indexResp.ID+"_title", titleEmbedding, lang)
 	if err != nil {
-		log.Printf("Failed to index title embedding in Qdrant, cleaning up OpenSearch entry")
+		vectorProgressLogger := logger.NewLogger("vector_indexing_progress")
+		vectorProgressLogger.Error().Err(err).Msg("Failed to index title embedding in Qdrant, cleaning up OpenSearch entry")
 		return nil, fmt.Errorf("failed to index title vectors in Qdrant: %w", err)
 	}
 
 	err = s.qdrantClient.UpsertPoint(ctx, indexResp.ID+"_summary", summaryEmbedding, lang)
 	if err != nil {
-		log.Printf("Failed to index summary embedding in Qdrant, cleaning up OpenSearch entry")
+		vectorProgressLogger := logger.NewLogger("vector_indexing_progress")
+		vectorProgressLogger.Error().Err(err).Msg("Failed to index summary embedding in Qdrant, cleaning up OpenSearch entry")
 		return nil, fmt.Errorf("failed to index summary vectors in Qdrant: %w", err)
 	}
 
-	log.Printf("Successfully indexed article with ID: %s", indexResp.ID)
+	indexProgressLogger := logger.NewLogger("article_indexing_progress")
+	indexProgressLogger.Info().Str("article_id", indexResp.ID).Msg("Successfully indexed article")
+	progressLogger.EndWithMsg("Article processing complete")
 
 	return &ArticleResponse{
 		ID:      indexResp.ID,
@@ -376,7 +397,8 @@ Keywords:`, req.Content)
 
 // AddArticlesBulkWithProgress processes multiple articles with progress callbacks
 func (s *Server) AddArticlesBulkWithProgress(ctx context.Context, req *BulkArticleRequest, progressCallback BulkProgressCallback) (*BulkArticleResponse, error) {
-	log.Printf("Processing bulk upload: %d articles", len(req.Articles))
+	bulkLogger := logger.NewLogger("bulk_article_processing").StartWithMsg("Processing bulk upload")
+	bulkLogger.Info().Int("article_count", len(req.Articles)).Msg("Starting bulk article processing")
 
 	response := &BulkArticleResponse{
 		Results: make([]BulkArticleResult, len(req.Articles)),
@@ -422,11 +444,13 @@ func (s *Server) AddArticlesBulkWithProgress(ctx context.Context, req *BulkArtic
 			if err != nil {
 				result.Success = false
 				result.Error = err.Error()
-				log.Printf("Failed to process article %d (%s): %v", index, article.Title, err)
+				articleLogger := logger.NewLogger("bulk_article_processing")
+				articleLogger.Error().Err(err).Int("index", index).Str("title", article.Title).Msg("Failed to process article")
 			} else {
 				result.Success = true
 				result.ID = articleResp.ID
-				log.Printf("Successfully processed article %d (%s): %s", index, article.Title, articleResp.ID)
+				articleLogger := logger.NewLogger("bulk_article_processing")
+				articleLogger.Info().Int("index", index).Str("title", article.Title).Str("article_id", articleResp.ID).Msg("Successfully processed article")
 			}
 
 			// Report completion of this article
@@ -453,7 +477,8 @@ func (s *Server) AddArticlesBulkWithProgress(ctx context.Context, req *BulkArtic
 		}
 	}
 
-	log.Printf("Bulk upload completed: %d success, %d errors", response.SuccessCount, response.ErrorCount)
+	bulkLogger.Info().Int("success_count", response.SuccessCount).Int("error_count", response.ErrorCount).Msg("Bulk upload completed")
+	bulkLogger.EndWithMsg("Bulk processing complete")
 	return response, nil
 }
 
@@ -475,7 +500,8 @@ func (s *Server) checkDuplicateArticle(ctx context.Context, title, content strin
 	for _, result := range titleResults {
 		if result.Score > 0.95 {
 			articleID := s.extractArticleID(result.ID)
-			log.Printf("Found highly similar title (score: %.3f) for article ID: %s", result.Score, articleID)
+			dupLogger := logger.NewLogger("duplicate_check")
+			dupLogger.Info().Str("article_id", articleID).Float64("similarity_score", result.Score).Msg("Found highly similar title")
 			return true, articleID, nil
 		}
 	}
@@ -485,12 +511,14 @@ func (s *Server) checkDuplicateArticle(ctx context.Context, title, content strin
 
 // DeleteArticle removes an article from both OpenSearch and Qdrant
 func (s *Server) DeleteArticle(ctx context.Context, id string) error {
-	log.Printf("Deleting article with ID: %s", id)
+	deleteLogger := logger.NewLogger("article_deletion").StartWithMsg("Deleting article")
+	deleteLogger.Info().Str("article_id", id).Msg("Starting article deletion")
 
 	// First, get the article to check if it exists and verify permissions
 	article, err := s.opensearchClient.GetArticle(ctx, id)
 	if err != nil {
-		log.Printf("Failed to get article for deletion: %v", err)
+		deleteLogger.Error().Err(err).Msg("Failed to get article for deletion")
+		deleteLogger.EndWithError(err)
 		return fmt.Errorf("article not found: %w", err)
 	}
 
@@ -498,19 +526,22 @@ func (s *Server) DeleteArticle(ctx context.Context, id string) error {
 	if user, ok := ctx.Value(UserContextKey).(*mongo.User); ok {
 		// Check if the user is the registrar of the article
 		if article.Registrar != user.Username {
-			log.Printf("User %s attempted to delete article registered by %s", user.Username, article.Registrar)
+			deleteLogger.Warn().Str("user", user.Username).Str("registrar", article.Registrar).Msg("User attempted to delete article registered by another user")
+			deleteLogger.EndWithError(fmt.Errorf("permission denied"))
 			return fmt.Errorf("permission denied: only the registrar can delete this article")
 		}
-		log.Printf("Article deletion authorized for user: %s", user.Username)
+		deleteLogger.Info().Str("user", user.Username).Msg("Article deletion authorized for user")
 	} else {
-		log.Printf("No user context found for deletion request")
+		deleteLogger.Error().Msg("No user context found for deletion request")
+		deleteLogger.EndWithError(fmt.Errorf("authentication required"))
 		return fmt.Errorf("authentication required")
 	}
 
 	// Delete from OpenSearch
 	err = s.opensearchClient.DeleteArticle(ctx, id)
 	if err != nil {
-		log.Printf("Failed to delete article from OpenSearch: %v", err)
+		deleteLogger.Error().Err(err).Msg("Failed to delete article from OpenSearch")
+		deleteLogger.EndWithError(err)
 		return fmt.Errorf("failed to delete from search index: %w", err)
 	}
 
@@ -521,20 +552,21 @@ func (s *Server) DeleteArticle(ctx context.Context, id string) error {
 
 	err = s.qdrantClient.DeletePoint(ctx, titleID)
 	if err != nil {
-		log.Printf("Failed to delete title embedding from Qdrant: %v", err)
+		deleteLogger.Warn().Err(err).Str("title_id", titleID).Msg("Failed to delete title embedding from Qdrant")
 		// Don't fail the entire operation if Qdrant deletion fails
 		// Log the error but continue
-		log.Printf("Warning: Article deleted from OpenSearch but title embedding not from Qdrant")
+		deleteLogger.Warn().Msg("Article deleted from OpenSearch but title embedding not from Qdrant")
 	}
 
 	err = s.qdrantClient.DeletePoint(ctx, summaryID)
 	if err != nil {
-		log.Printf("Failed to delete summary embedding from Qdrant: %v", err)
+		deleteLogger.Warn().Err(err).Str("summary_id", summaryID).Msg("Failed to delete summary embedding from Qdrant")
 		// Don't fail the entire operation if Qdrant deletion fails
 		// Log the error but continue
-		log.Printf("Warning: Article deleted from OpenSearch but summary embedding not from Qdrant")
+		deleteLogger.Warn().Msg("Article deleted from OpenSearch but summary embedding not from Qdrant")
 	}
 
-	log.Printf("Successfully deleted article: %s", id)
+	deleteLogger.Info().Str("article_id", id).Msg("Successfully deleted article")
+	deleteLogger.EndWithMsg("Article deletion complete")
 	return nil
 }

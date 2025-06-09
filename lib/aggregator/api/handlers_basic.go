@@ -3,7 +3,6 @@ package api
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -77,66 +76,96 @@ func (h *HTTPServer) AddArticleHandler(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := h.server.AddArticle(ctx, &req)
 	if err != nil {
-		log.Printf("Error adding article: %v", err)
+		addLogger.Error().Err(err).Msg("Error adding article")
+		addLogger.EndWithError(err)
 		writeErrorResponse(w, http.StatusInternalServerError, "processing_error", "Failed to process article")
 		return
 	}
 
+	addLogger.Info().Str("article_id", resp.ID).Msg("Article added successfully")
+	addLogger.EndWithMsg("Add article request completed")
 	writeJSONResponse(w, http.StatusCreated, resp)
 }
 
 // SearchHandler handles search requests
 func (h *HTTPServer) SearchHandler(w http.ResponseWriter, r *http.Request) {
+	searchLogger := logger.NewLogger("search-handler")
+	searchLogger.StartWithMsg("Processing search request")
+
 	ctx := r.Context()
 
 	var req SearchRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		searchLogger.Error().Err(err).Msg("Invalid JSON format")
+		searchLogger.EndWithError(err)
 		writeErrorResponse(w, http.StatusBadRequest, "invalid_json", "Invalid JSON format")
 		return
 	}
 
+	searchLogger.Info().Str("query", req.Query).Msg("Search request details")
+
 	// Basic validation
 	if req.Query == "" {
+		searchLogger.Error().Msg("Missing query in request")
+		searchLogger.EndWithError(fmt.Errorf("query is required"))
 		writeErrorResponse(w, http.StatusBadRequest, "missing_query", "Query is required")
 		return
 	}
 
 	resp, err := h.server.Search(ctx, &req)
 	if err != nil {
-		log.Printf("Error performing search: %v", err)
+		searchLogger.Error().Err(err).Msg("Error performing search")
+		searchLogger.EndWithError(err)
 		writeErrorResponse(w, http.StatusInternalServerError, "search_error", "Failed to perform search")
 		return
 	}
 
+	searchLogger.Info().Int("result_count", len(resp.Sources)).Msg("Search completed successfully")
+	searchLogger.EndWithMsg("Search request completed")
 	writeJSONResponse(w, http.StatusOK, resp)
 }
 
 // GetArticleHandler handles getting a specific article
 func (h *HTTPServer) GetArticleHandler(w http.ResponseWriter, r *http.Request) {
+	getLogger := logger.NewLogger("get-article-handler")
+	getLogger.StartWithMsg("Processing get article request")
+
 	ctx := r.Context()
 
 	id := chi.URLParam(r, "id")
 	if id == "" {
+		getLogger.Error().Msg("Missing article ID in request")
+		getLogger.EndWithError(fmt.Errorf("article ID is required"))
 		writeErrorResponse(w, http.StatusBadRequest, "missing_id", "Article ID is required")
 		return
 	}
 
+	getLogger.Info().Str("article_id", id).Msg("Getting article by ID")
+
 	article, err := h.server.GetArticle(ctx, id)
 	if err != nil {
-		log.Printf("Error getting article: %v", err)
+		getLogger.Error().Err(err).Str("article_id", id).Msg("Error getting article")
+		getLogger.EndWithError(err)
 		writeErrorResponse(w, http.StatusNotFound, "article_not_found", "Article not found")
 		return
 	}
 
+	getLogger.Info().Str("article_id", id).Str("title", article.Title).Msg("Article retrieved successfully")
+	getLogger.EndWithMsg("Get article request completed")
 	writeJSONResponse(w, http.StatusOK, article)
 }
 
 // KeywordSearchHandler handles keyword-only search requests
 func (h *HTTPServer) KeywordSearchHandler(w http.ResponseWriter, r *http.Request) {
+	keywordLogger := logger.NewLogger("keyword-search-handler")
+	keywordLogger.StartWithMsg("Processing keyword search request")
+
 	ctx := r.Context()
 
 	query := r.URL.Query().Get("q")
 	if query == "" {
+		keywordLogger.Error().Msg("Missing query parameter 'q'")
+		keywordLogger.EndWithError(fmt.Errorf("query parameter 'q' is required"))
 		writeErrorResponse(w, http.StatusBadRequest, "missing_query", "Query parameter 'q' is required")
 		return
 	}
@@ -159,13 +188,18 @@ func (h *HTTPServer) KeywordSearchHandler(w http.ResponseWriter, r *http.Request
 		}
 	}
 
+	keywordLogger.Info().Str("query", query).Str("lang", lang).Int("size", size).Int("from", from).Msg("Keyword search request details")
+
 	resp, err := h.server.opensearchClient.KeywordSearch(ctx, query, lang, size, from)
 	if err != nil {
-		log.Printf("Error performing keyword search: %v", err)
+		keywordLogger.Error().Err(err).Msg("Error performing keyword search")
+		keywordLogger.EndWithError(err)
 		writeErrorResponse(w, http.StatusInternalServerError, "search_error", "Failed to perform search")
 		return
 	}
 
+	keywordLogger.Info().Int("result_count", len(resp.Results)).Msg("Keyword search completed successfully")
+	keywordLogger.EndWithMsg("Keyword search request completed")
 	writeJSONResponse(w, http.StatusOK, resp)
 }
 
@@ -209,7 +243,8 @@ func (h *HTTPServer) ExternalArticleListHandler(w http.ResponseWriter, r *http.R
 
 	resp, err := h.server.opensearchClient.KeywordSearch(ctx, query, lang, size, from)
 	if err != nil {
-		log.Printf("Error listing articles: %v", err)
+		listLogger := logger.NewLogger("external-article-list")
+		listLogger.Error().Err(err).Msg("Error listing articles")
 		writeErrorResponse(w, http.StatusInternalServerError, "search_error", "Failed to list articles")
 		return
 	}
@@ -228,36 +263,53 @@ func (h *HTTPServer) ExternalArticleListHandler(w http.ResponseWriter, r *http.R
 
 // ExternalArticleDetailHandler handles external article detail requests (read-only)
 func (h *HTTPServer) ExternalArticleDetailHandler(w http.ResponseWriter, r *http.Request) {
+	extDetailLogger := logger.NewLogger("external-article-detail")
+	extDetailLogger.StartWithMsg("Processing external article detail request")
+
 	ctx := r.Context()
 
 	id := chi.URLParam(r, "id")
 	if id == "" {
+		extDetailLogger.Error().Msg("Missing article ID in request")
+		extDetailLogger.EndWithError(fmt.Errorf("article ID is required"))
 		writeErrorResponse(w, http.StatusBadRequest, "missing_id", "Article ID is required")
 		return
 	}
 
+	extDetailLogger.Info().Str("article_id", id).Msg("Getting article for external request")
+
 	article, err := h.server.GetArticle(ctx, id)
 	if err != nil {
-		log.Printf("Error getting article: %v", err)
+		extDetailLogger.Error().Err(err).Str("article_id", id).Msg("Error getting article")
+		extDetailLogger.EndWithError(err)
 		writeErrorResponse(w, http.StatusNotFound, "article_not_found", "Article not found")
 		return
 	}
 
+	extDetailLogger.Info().Str("article_id", id).Str("title", article.Title).Msg("Article retrieved for external request")
+	extDetailLogger.EndWithMsg("External article detail request completed")
 	writeJSONResponse(w, http.StatusOK, article)
 }
 
 // ExternalSearchHandler handles external search requests (read-only, simplified)
 func (h *HTTPServer) ExternalSearchHandler(w http.ResponseWriter, r *http.Request) {
+	extSearchLogger := logger.NewLogger("external-search-handler")
+	extSearchLogger.StartWithMsg("Processing external search request")
+
 	ctx := r.Context()
 
 	var req SearchRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		extSearchLogger.Error().Err(err).Msg("Invalid JSON format")
+		extSearchLogger.EndWithError(err)
 		writeErrorResponse(w, http.StatusBadRequest, "invalid_json", "Invalid JSON format")
 		return
 	}
 
 	// Basic validation
 	if req.Query == "" {
+		extSearchLogger.Error().Msg("Missing query in request")
+		extSearchLogger.EndWithError(fmt.Errorf("query is required"))
 		writeErrorResponse(w, http.StatusBadRequest, "missing_query", "Query is required")
 		return
 	}
@@ -272,9 +324,12 @@ func (h *HTTPServer) ExternalSearchHandler(w http.ResponseWriter, r *http.Reques
 		req.Size = 50
 	}
 
+	extSearchLogger.Info().Str("query", req.Query).Int("size", req.Size).Msg("External search request details")
+
 	resp, err := h.server.Search(ctx, &req)
 	if err != nil {
-		log.Printf("Error performing external search: %v", err)
+		extSearchLogger.Error().Err(err).Msg("Error performing external search")
+		extSearchLogger.EndWithError(err)
 		writeErrorResponse(w, http.StatusInternalServerError, "search_error", "Failed to perform search")
 		return
 	}
@@ -287,15 +342,22 @@ func (h *HTTPServer) ExternalSearchHandler(w http.ResponseWriter, r *http.Reques
 		"took":    resp.Took,
 	}
 
+	extSearchLogger.Info().Int("result_count", len(resp.Sources)).Msg("External search completed successfully")
+	extSearchLogger.EndWithMsg("External search request completed")
 	writeJSONResponse(w, http.StatusOK, simplifiedResponse)
 }
 
 // ExternalKeywordSearchHandler handles external keyword search requests (read-only)
 func (h *HTTPServer) ExternalKeywordSearchHandler(w http.ResponseWriter, r *http.Request) {
+	extKeywordLogger := logger.NewLogger("external-keyword-search")
+	extKeywordLogger.StartWithMsg("Processing external keyword search request")
+
 	ctx := r.Context()
 
 	query := r.URL.Query().Get("q")
 	if query == "" {
+		extKeywordLogger.Error().Msg("Missing query parameter 'q'")
+		extKeywordLogger.EndWithError(fmt.Errorf("query parameter 'q' is required"))
 		writeErrorResponse(w, http.StatusBadRequest, "missing_query", "Query parameter 'q' is required")
 		return
 	}
@@ -318,29 +380,42 @@ func (h *HTTPServer) ExternalKeywordSearchHandler(w http.ResponseWriter, r *http
 		}
 	}
 
+	extKeywordLogger.Info().Str("query", query).Str("lang", lang).Int("size", size).Int("from", from).Msg("External keyword search request details")
+
 	resp, err := h.server.opensearchClient.KeywordSearch(ctx, query, lang, size, from)
 	if err != nil {
-		log.Printf("Error performing external keyword search: %v", err)
+		extKeywordLogger.Error().Err(err).Msg("Error performing external keyword search")
+		extKeywordLogger.EndWithError(err)
 		writeErrorResponse(w, http.StatusInternalServerError, "search_error", "Failed to perform search")
 		return
 	}
 
+	extKeywordLogger.Info().Int("result_count", len(resp.Results)).Msg("External keyword search completed successfully")
+	extKeywordLogger.EndWithMsg("External keyword search request completed")
 	writeJSONResponse(w, http.StatusOK, resp)
 }
 
 // DeleteArticleHandler handles article deletion requests
 func (h *HTTPServer) DeleteArticleHandler(w http.ResponseWriter, r *http.Request) {
+	deleteHandlerLogger := logger.NewLogger("delete-article-handler")
+	deleteHandlerLogger.StartWithMsg("Processing delete article request")
+
 	ctx := r.Context()
 
 	id := chi.URLParam(r, "id")
 	if id == "" {
+		deleteHandlerLogger.Error().Msg("Missing article ID in request")
+		deleteHandlerLogger.EndWithError(fmt.Errorf("article ID is required"))
 		writeErrorResponse(w, http.StatusBadRequest, "missing_id", "Article ID is required")
 		return
 	}
 
+	deleteHandlerLogger.Info().Str("article_id", id).Msg("Deleting article by ID")
+
 	err := h.server.DeleteArticle(ctx, id)
 	if err != nil {
-		log.Printf("Error deleting article: %v", err)
+		deleteHandlerLogger.Error().Err(err).Str("article_id", id).Msg("Error deleting article")
+		deleteHandlerLogger.EndWithError(err)
 		if err.Error() == "article not found" {
 			writeErrorResponse(w, http.StatusNotFound, "not_found", "Article not found")
 			return
@@ -353,5 +428,7 @@ func (h *HTTPServer) DeleteArticleHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	deleteHandlerLogger.Info().Str("article_id", id).Msg("Article deleted successfully")
+	deleteHandlerLogger.EndWithMsg("Delete article request completed")
 	w.WriteHeader(http.StatusNoContent)
 }
