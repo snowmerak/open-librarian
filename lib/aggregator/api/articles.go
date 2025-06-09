@@ -505,12 +505,24 @@ func (s *Server) DeleteArticle(ctx context.Context, id string) error {
 	}
 
 	// Delete from Qdrant (vector database)
-	err = s.qdrantClient.DeletePoint(ctx, id)
+	// Delete both title and summary embeddings
+	titleID := id + "_title"
+	summaryID := id + "_summary"
+
+	err = s.qdrantClient.DeletePoint(ctx, titleID)
 	if err != nil {
-		log.Printf("Failed to delete article from Qdrant: %v", err)
+		log.Printf("Failed to delete title embedding from Qdrant: %v", err)
 		// Don't fail the entire operation if Qdrant deletion fails
 		// Log the error but continue
-		log.Printf("Warning: Article deleted from OpenSearch but not from Qdrant")
+		log.Printf("Warning: Article deleted from OpenSearch but title embedding not from Qdrant")
+	}
+
+	err = s.qdrantClient.DeletePoint(ctx, summaryID)
+	if err != nil {
+		log.Printf("Failed to delete summary embedding from Qdrant: %v", err)
+		// Don't fail the entire operation if Qdrant deletion fails
+		// Log the error but continue
+		log.Printf("Warning: Article deleted from OpenSearch but summary embedding not from Qdrant")
 	}
 
 	log.Printf("Successfully deleted article: %s", id)
