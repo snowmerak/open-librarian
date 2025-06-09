@@ -15,6 +15,8 @@ import (
 	"github.com/go-chi/cors"
 
 	"github.com/snowmerak/open-librarian/lib/aggregator/api"
+
+	_ "github.com/snowmerak/open-librarian/lib/util/logger"
 )
 
 func main() {
