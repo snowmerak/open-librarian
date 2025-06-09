@@ -4,50 +4,45 @@ An intelligent search service that provides AI-powered answers based on stored a
 
 ![open-librarian-main](/img/main_page.png)
 
-## 🚀 Key Features
+## 📖 Overview
 
-| **Component** | **Technology** | **Version** | **Description** |
-|---------------|----------------|-------------|-----------------|
-| **Language Detection** | Lingua-Go | v1.4+ | 8개 언어 감지 |
-| **Frontend** | Vanilla JS + Tailwind | Latest | 현대적 웹 UI + 다국어 지원 |
-| **Real-time** | WebSocket + SSE | Native | 실시간 통신 및 진행률 추적 |
-| **Container** | Docker + Compose | Latest | 컨테이너화 배포 |
-| **Authentication** | JWT + Argon2 | Latest | 보안 인증 시스템 |
-| **Database** | MongoDB + IndexedDB | Latest | 사용자 데이터 및 클라이언트 저장소 |
+Open Librarian is a modern, AI-powered search platform that allows users to upload, store, and intelligently search through their articles. Built with Go and designed for performance, it combines traditional keyword search with vector-based semantic search to provide comprehensive answers to user queries.
 
-## 🌟 New Features
+## ✨ Key Features
 
-### 🔐 User Authentication & Authorization
-- **Secure Registration/Login**: JWT-based authentication with Argon2 password hashing
-- **User Management**: Profile management, password changes, account deletion
-- **Role-based Access**: Users can only manage their own uploaded articles
-- **Session Management**: Token refresh and automatic logout on expiration
+### 🔍 Intelligent Search
+- **Hybrid Search**: Combines keyword and vector-based semantic search for comprehensive results
+- **AI-Powered Answers**: Get contextual answers generated from your article collection
+- **Real-time Results**: Streaming search responses with WebSocket support
+- **Multi-language Support**: Automatic language detection for 8 languages
 
-### 🌐 Real-time Communication
-- **WebSocket Integration**: Real-time search results and upload progress
-- **Live Progress Tracking**: Visual progress indicators for article processing
-- **Streaming Responses**: Real-time AI answer generation
-- **Connection Resilience**: Automatic fallback to HTTP on WebSocket failure
+### 🔐 User Management
+- **Secure Authentication**: JWT-based auth with Argon2 password hashing
+- **User Profiles**: Complete user management system
+- **Article Ownership**: Users can manage their own uploaded content
+- **Session Management**: Automatic token refresh and secure logout
 
-### 🌍 Multilingual Support
-- **i18n System**: Complete internationalization framework
+### 📚 Article Management
+- **Bulk Upload**: JSONL file processing with real-time progress tracking
+- **Metadata Support**: Author information, creation dates, and source URLs
+- **Content Validation**: Real-time feedback during upload process
+- **Flexible Storage**: Support for various article formats and metadata
+
+### 🌐 Multi-language Support
+- **Internationalization**: Complete i18n framework
 - **Supported Languages**: English, Korean, Chinese, Japanese, Spanish
-- **Dynamic Language Switching**: Runtime language changes without page reload
-- **Persistent Preferences**: Language settings saved locally
+- **Dynamic Switching**: Change languages without page reload
+- **Persistent Settings**: Language preferences saved locally
 
-### 📊 Enhanced Article Management
-- **Bulk Upload**: JSONL file processing with progress tracking
-- **Article Ownership**: Users can delete their own articles
-- **Metadata Support**: Author, creation date, original URL tracking
-- **Real-time Validation**: Live feedback during upload process
-
-### 🔗 External API Access
-- **Agent-friendly Endpoints**: Read-only APIs for external systems
-- **Rate Limiting**: Protection against abuse
-- **Simplified Responses**: Optimized data formats for agents
-- **Public Access**: No authentication required for read operations
+### 🔗 API Access
+- **External Integrations**: Read-only APIs for external systems and agents
+- **Rate Limiting**: Built-in protection against abuse
+- **Public Endpoints**: No authentication required for read operations
+- **Developer Friendly**: Comprehensive API documentation
 
 ## 🏗 Architecture
+
+Open Librarian follows a modern three-tier architecture designed for scalability and maintainability:
 
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
@@ -60,12 +55,35 @@ An intelligent search service that provides AI-powered answers based on stored a
 └─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
 
-## 🚀 Quick Start
+### Technology Stack
+
+| **Component** | **Technology** | **Purpose** |
+|---------------|----------------|-------------|
+| **Backend** | Go 1.21+ with Chi Router | High-performance HTTP server and routing |
+| **Frontend** | Vanilla JavaScript + Tailwind CSS | Modern, responsive web interface |
+| **Authentication** | JWT + Argon2 | Secure user authentication and authorization |
+| **User Data** | MongoDB | User accounts, article metadata, and relationships |
+| **Search Engine** | OpenSearch | Full-text search and keyword matching |
+| **Vector Database** | Qdrant | Semantic similarity search and embeddings |
+| **AI Integration** | Ollama | Local LLM inference for answer generation |
+| **Real-time** | WebSocket | Live updates and streaming responses |
+| **Containerization** | Docker + Docker Compose | Easy deployment and service orchestration |
+
+### Data Flow
+
+1. **Article Upload**: Users upload articles → Processed and stored in MongoDB → Indexed in OpenSearch → Embeddings stored in Qdrant
+2. **Search Query**: User submits query → Hybrid search (keyword + vector) → AI generates contextual answer → Real-time response streaming
+3. **Authentication**: Login request → JWT token generation → Token validation on protected endpoints
+
+## 📋 System Requirements
 
 ### Prerequisites
-- Go 1.21+
-- Docker & Docker Compose
-- Node.js (for development)
+- **Go**: Version 1.21 or higher
+- **Docker**: Latest version with Docker Compose
+- **Memory**: Minimum 4GB RAM (8GB recommended)
+- **Storage**: At least 2GB free space
+- **Network**: Internet connection for AI model downloads
+## 🚀 Getting Started
 
 ### Installation
 
@@ -92,57 +110,114 @@ go run cmd/server/main.go
 ```
 
 5. **Access the application**
-- Web UI: http://localhost:8080
-- API Documentation: http://localhost:8080/swagger/
-- Health Check: http://localhost:8080/health
+- **Web Interface**: http://localhost:8080
+- **API Documentation**: http://localhost:8080/swagger/
+- **Health Check**: http://localhost:8080/health
 
-## 🔧 Configuration
+### First Steps
+
+1. **Create an account** through the web interface
+2. **Upload your first articles** using the bulk upload feature
+3. **Start searching** and get AI-powered answers
+4. **Explore the API** using the Swagger documentation
+
+## ⚙️ Configuration
 
 ### Environment Variables
 
+Configure the following environment variables in your `.env` file:
+
 ```bash
 # Server Configuration
-PORT=8080
-JWT_SECRET=your-super-secret-jwt-key
+PORT=8080                              # Application port
+JWT_SECRET=your-super-secret-jwt-key   # JWT signing secret (change this!)
 
 # Database Connections
-MONGODB_URI=mongodb://localhost:27017/open_librarian
-OPENSEARCH_URL=http://localhost:9200
-QDRANT_HOST=localhost
-QDRANT_PORT=6334
+MONGODB_URI=mongodb://localhost:27017/open_librarian  # MongoDB connection string
+OPENSEARCH_URL=http://localhost:9200                  # OpenSearch cluster URL
+QDRANT_HOST=localhost                                 # Qdrant vector database host
+QDRANT_PORT=6334                                     # Qdrant port
 
 # AI Service
-OLLAMA_URL=http://localhost:11434
+OLLAMA_URL=http://localhost:11434      # Ollama API endpoint for LLM inference
 ```
 
-### MongoDB Setup
+### Database Setup
 
+#### MongoDB Configuration
 ```bash
-# Create user and database
+# Connect to MongoDB
 mongosh
+
+# Create database and user
 use open_librarian
 db.createUser({
   user: "librarian",
-  pwd: "your-password",
-  roles: ["readWrite"]
+  pwd: "your-secure-password",
+  roles: ["readWrite", "dbAdmin"]
 })
+
+# Create indexes for better performance
+db.users.createIndex({ "email": 1 }, { unique: true })
+db.articles.createIndex({ "author_id": 1 })
+db.articles.createIndex({ "created_at": -1 })
 ```
 
-## 📖 API Documentation
+#### OpenSearch Setup
+OpenSearch will automatically create necessary indexes when first used. No manual configuration required.
 
-### Authentication Endpoints
+#### Qdrant Setup
+Qdrant collections are automatically created when the application starts. Default configuration uses cosine similarity for vector search.
 
+## 🔌 Usage Guide
+
+### Web Interface
+
+The web interface provides an intuitive way to interact with Open Librarian:
+
+- **Dashboard**: Overview of your articles and recent activity
+- **Search**: Intelligent search with real-time AI answers
+- **Upload**: Bulk article upload with progress tracking
+- **Profile**: User account management and settings
+
+### Article Upload Formats
+
+Open Librarian supports JSONL (JSON Lines) format for bulk uploads:
+
+```json
+{"title": "Article Title", "content": "Article content...", "author": "Author Name", "url": "https://example.com"}
+{"title": "Another Article", "content": "More content...", "author": "Different Author"}
+```
+
+### Search Capabilities
+
+- **Keyword Search**: Traditional full-text search across article content
+- **Semantic Search**: Vector-based similarity search for conceptual matches
+- **Hybrid Results**: Combines both approaches for comprehensive results
+- **AI Answers**: Contextual answers generated from relevant articles
+
+### Real-time Features
+
+- **Live Search**: Get results as you type
+- **Upload Progress**: Real-time feedback during article processing
+- **Streaming Answers**: AI responses delivered in real-time
+- **WebSocket Fallback**: Automatic fallback to HTTP when WebSocket unavailable
+
+## 📖 API Reference
+
+Open Librarian provides a comprehensive REST API for all operations. Full documentation is available at `/swagger/` when the server is running.
+
+### Key API Endpoints
+
+#### Authentication
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | `POST` | `/api/v1/users/` | User registration |
 | `POST` | `/api/v1/users/auth` | User login |
 | `POST` | `/api/v1/users/refresh` | Token refresh |
-| `GET` | `/api/v1/users/me` | Get current user |
-| `PUT` | `/api/v1/users/{id}` | Update user profile |
-| `DELETE` | `/api/v1/users/{id}` | Delete user account |
+| `GET` | `/api/v1/users/me` | Get current user profile |
 
-### Article Management
-
+#### Article Management
 | Method | Endpoint | Description | Auth Required |
 |--------|----------|-------------|---------------|
 | `POST` | `/api/v1/articles` | Add single article | ✅ |
@@ -150,26 +225,47 @@ db.createUser({
 | `DELETE` | `/api/v1/articles/{id}` | Delete article | ✅ (Owner only) |
 | `GET` | `/api/v1/articles/{id}` | Get article details | ❌ |
 
-### Search Endpoints
-
+#### Search & AI
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | `POST` | `/api/v1/search` | Hybrid search with AI answers |
 | `GET` | `/api/v1/search/keyword` | Keyword-only search |
 | `WS` | `/api/v1/search/ws` | WebSocket real-time search |
 
-### External Agent APIs
-
+#### External APIs (Public Access)
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/api/v1/external/articles` | List articles (public) |
-| `GET` | `/api/v1/external/articles/{id}` | Get article (public) |
-| `GET` | `/api/v1/external/search` | Search articles (public) |
+| `GET` | `/api/v1/external/articles` | List articles for external agents |
+| `GET` | `/api/v1/external/articles/{id}` | Get article by ID |
+| `GET` | `/api/v1/external/search` | Public search endpoint |
 
-## 🔌 WebSocket Usage
+## 💡 Example Usage
 
-### Real-time Search
+### Basic Search Example
+```bash
+# Simple search request
+curl -X POST http://localhost:8080/api/v1/search \
+  -H "Content-Type: application/json" \
+  -d '{"query": "machine learning algorithms", "size": 5}'
+```
+
+### Article Upload Example
+```bash
+# Upload a single article (requires authentication)
+curl -X POST http://localhost:8080/api/v1/articles \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -d '{
+    "title": "Introduction to AI",
+    "content": "Artificial Intelligence is...",
+    "author": "John Doe",
+    "url": "https://example.com/ai-intro"
+  }'
+```
+
+### WebSocket Search Example
 ```javascript
+// Real-time search with WebSocket
 const ws = new WebSocket('ws://localhost:8080/api/v1/search/ws');
 
 ws.onopen = () => {
@@ -198,67 +294,142 @@ ws.onmessage = (event) => {
 };
 ```
 
-### Article Upload with Progress
-```javascript
-const token = 'your-jwt-token';
-const ws = new WebSocket(`ws://localhost:8080/api/v1/articles/ws?token=${token}`);
+## 🔧 Development
 
-ws.onopen = () => {
-    ws.send(JSON.stringify({
-        title: "Article Title",
-        content: "Article content...",
-        author: "Author Name"
-    }));
-};
-
-ws.onmessage = (event) => {
-    const message = JSON.parse(event.data);
-    switch(message.type) {
-        case 'progress':
-            updateProgressBar(message.data.percent);
-            break;
-        case 'success':
-            console.log('Upload successful');
-            break;
-    }
-};
+### Project Structure
+```
+open-librarian/
+├── cmd/server/          # Application entry point
+├── lib/                 # Core libraries
+│   ├── aggregator/      # Main application logic
+│   ├── client/          # Database and service clients
+│   └── util/            # Utility functions
+├── docs/                # Documentation and examples
+├── scripts/             # Build and setup scripts
+└── docker-compose.yaml  # Container orchestration
 ```
 
-## 🛡 Security Features
+### Building from Source
+```bash
+# Build the application
+go build -o bin/open-librarian cmd/server/main.go
 
-- **Password Security**: Argon2 hashing with salt
-- **JWT Authentication**: Secure token-based auth
-- **CORS Protection**: Configurable cross-origin policies
-- **Rate Limiting**: API abuse prevention
-- **Input Validation**: Comprehensive request validation
-- **SQL Injection Prevention**: MongoDB query sanitization
+# Run tests
+go test ./...
 
-## 🌐 Internationalization
+# Run with development settings
+go run cmd/server/main.go
+```
 
-The system supports multiple languages with automatic detection and manual selection:
+### Docker Development
+```bash
+# Build custom image
+docker build -t open-librarian .
 
-- **English** (en) - Default
-- **Korean** (ko) - 한국어
-- **Chinese** (zh) - 中文
-- **Japanese** (ja) - 日本語
-- **Spanish** (es) - Español
+# Run with docker-compose
+docker-compose up --build
+```
 
-Language preferences are automatically saved and restored across sessions.
+## 🛡️ Security & Performance
 
-## 📊 Monitoring & Logging
+### Security Features
+- **Password Security**: Argon2 hashing with salt for maximum protection
+- **JWT Authentication**: Stateless, secure token-based authentication
+- **CORS Protection**: Configurable cross-origin resource sharing policies
+- **Rate Limiting**: Built-in API abuse prevention with configurable thresholds
+- **Input Validation**: Comprehensive request validation and sanitization
+- **Secure Headers**: Security headers for web interface protection
 
-- **Health Checks**: Comprehensive service health monitoring
-- **Request Logging**: Detailed HTTP request/response logging
-- **Error Tracking**: Structured error reporting
-- **Performance Metrics**: Response time and throughput monitoring
+### Performance Optimizations
+- **Vector Caching**: Intelligent caching of embeddings and search results
+- **Database Indexing**: Optimized MongoDB indexes for fast queries
+- **Connection Pooling**: Efficient database connection management
+- **Streaming Responses**: Reduced latency with real-time data streaming
+- **Compression**: Response compression for bandwidth optimization
+
+## 🌐 Multilingual Support
+
+Open Librarian provides comprehensive internationalization:
+
+### Supported Languages
+- **English** (en) - Default language
+- **Korean** (ko) - 한국어 지원
+- **Chinese** (zh) - 中文支持
+- **Japanese** (ja) - 日本語サポート
+- **Spanish** (es) - Soporte en español
+
+### Features
+- **Automatic Detection**: Language detection for uploaded content
+- **Dynamic Switching**: Change interface language without reload
+- **Persistent Settings**: User language preferences saved locally
+- **Content-Aware Search**: Search results optimized for content language
+
+## 📊 Monitoring & Health Checks
+
+### Health Monitoring
+- **Service Health**: Real-time status of all connected services
+- **Database Connectivity**: MongoDB, OpenSearch, and Qdrant status
+- **AI Service Status**: Ollama availability and model status
+- **Performance Metrics**: Response times and system resource usage
+
+### Logging
+- **Structured Logging**: JSON-formatted logs for easy parsing
+- **Request Tracing**: Complete request/response cycle tracking
+- **Error Tracking**: Comprehensive error reporting and stack traces
+- **Audit Logging**: User actions and system events tracking
+
+## 🚀 Deployment
+
+### Production Deployment
+
+For production environments, consider the following:
+
+```bash
+# Production environment variables
+export NODE_ENV=production
+export JWT_SECRET=$(openssl rand -base64 32)
+export MONGODB_URI="mongodb://username:password@your-mongo-host:27017/open_librarian"
+
+# Use production-ready containers
+docker-compose -f docker-compose.prod.yml up -d
+```
+
+### Docker Deployment
+```bash
+# Build and deploy with Docker
+docker build -t open-librarian:latest .
+docker run -d -p 8080:8080 --env-file .env open-librarian:latest
+```
+
+### Scaling Considerations
+- **Load Balancing**: Use nginx or similar for multiple instances
+- **Database Scaling**: Consider MongoDB replica sets for high availability
+- **Vector Database**: Qdrant clustering for large-scale deployments
+- **AI Processing**: Multiple Ollama instances for concurrent AI requests
 
 ## 🤝 Contributing
 
+We welcome contributions to Open Librarian! Here's how you can help:
+
+### Development Setup
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+3. Set up the development environment
+4. Make your changes and add tests
+5. Commit your changes (`git commit -m 'Add some amazing feature'`)
+6. Push to the branch (`git push origin feature/amazing-feature`)
+7. Open a Pull Request
+
+### Code Guidelines
+- Follow Go best practices and formatting (`go fmt`, `go vet`)
+- Write comprehensive tests for new features
+- Update documentation for API changes
+- Ensure all tests pass before submitting
+
+### Issue Reporting
+- Use GitHub Issues for bug reports and feature requests
+- Provide detailed reproduction steps for bugs
+- Include system information and logs when relevant
 
 ## 📝 License
 
@@ -266,8 +437,15 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🙏 Acknowledgments
 
-- [OpenSearch](https://opensearch.org/) for full-text search capabilities
-- [Qdrant](https://qdrant.tech/) for vector similarity search
-- [Ollama](https://ollama.ai/) for local LLM inference
-- [MongoDB](https://www.mongodb.com/) for user data storage
-- [Go Chi](https://go-chi.io/) for HTTP routing framework
+Open Librarian is built on the shoulders of amazing open-source projects:
+
+- **[OpenSearch](https://opensearch.org/)** - Powerful full-text search and analytics engine
+- **[Qdrant](https://qdrant.tech/)** - High-performance vector similarity search engine
+- **[Ollama](https://ollama.ai/)** - Local large language model inference platform
+- **[MongoDB](https://www.mongodb.com/)** - Flexible document database for user data
+- **[Go Chi](https://go-chi.io/)** - Lightweight HTTP router and middleware framework
+- **[Lingua-Go](https://github.com/pemistahl/lingua-go)** - Natural language detection library
+
+---
+
+**Ready to get started?** Follow the [Getting Started](#-getting-started) guide to set up your own Open Librarian instance!
