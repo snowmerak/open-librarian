@@ -30,17 +30,18 @@ func (s *Server) generateAnswer(ctx context.Context, query string, articles []op
 5. 추가 정보가 필요한 경우 어디서 찾을 수 있는지 안내해주세요
 6. 특정 자료를 참조하지 않았음을 명시해주세요`
 		contextIntro = "다음은 검색된 관련 자료들입니다:\n\n"
-		promptTemplate = `위의 자료들을 바탕으로 다음 질문에 대해 종합적이고 정확한 답변을 해주세요.
+		promptTemplate = `위의 자료들을 기반으로 다음 질문에 대해 종합적이고 풍부한 답변을 해주세요.
 
 질문: %s
 
 답변할 때 다음 사항을 지켜주세요:
-1. 제공된 자료의 내용만을 바탕으로 답변하세요
-2. 질문과 관련이 없는 정보나 무관한 내용은 무시하세요
-3. 구체적이고 실용적인 정보를 포함하세요
+1. 제공된 자료를 기반으로 상세하고 풍부한 답변을 작성하세요
+2. 자료의 핵심 내용을 충분히 활용하여 깊이 있는 설명을 제공하세요
+3. 질문과 관련된 모든 유용한 정보를 포함하세요
 4. Markdown 형식으로 답변을 작성하세요 (제목, 굵은 글씨, 목록 등 활용)
-5. 2-3개 문단으로 구성하여 읽기 쉽게 작성하세요
-6. 확실하지 않은 내용은 추측하지 마세요
+5. 3-4개 문단으로 구성하여 충분한 분량으로 작성하세요
+6. 구체적인 예시나 세부사항이 있다면 포함하세요
+7. 답변 마지막에 "더 자세한 정보는 아래 참고 자료를 확인해 주세요."라고 추가하세요
 
 %s
 
@@ -58,17 +59,18 @@ Please provide a helpful answer with the following guidelines:
 5. If additional information is needed, guide where it can be found
 6. Clearly state that no specific materials were referenced`
 		contextIntro = "Here are the relevant materials found:\n\n"
-		promptTemplate = `Based on the materials above, please provide a comprehensive and accurate answer to the following question.
+		promptTemplate = `Based on the materials above, please provide a comprehensive and detailed answer to the following question.
 
 Question: %s
 
 Please follow these guidelines when answering:
-1. Base your answer only on the provided materials
-2. Ignore information that is not relevant to the question
-3. Include specific and practical information
+1. Create a detailed and rich answer based on the provided materials
+2. Fully utilize the core content of the materials to provide in-depth explanations
+3. Include all useful information related to the question
 4. Write your answer in Markdown format (use headings, bold text, lists, etc.)
-5. Structure your response in 2-3 paragraphs for easy reading
-6. Do not speculate on uncertain information
+5. Structure your response in 3-4 paragraphs with sufficient content
+6. Include specific examples or details if available
+7. Add "Please refer to the reference materials below for more detailed information." at the end of your answer
 
 %s
 
@@ -86,17 +88,18 @@ Answer (Markdown format):`
 5. 追加情報が必要な場合、どこで見つけられるかを案内してください
 6. 特定の資料を参照していないことを明示してください`
 		contextIntro = "以下は検索された関連資料です：\n\n"
-		promptTemplate = `上記の資料に基づいて、以下の質問に対して包括的で正確な回答をしてください。
+		promptTemplate = `上記の資料に基づいて、以下の質問に対して包括的で詳細な回答をしてください。
 
 質問: %s
 
 回答の際は以下の点にご注意ください：
-1. 提供された資料の内容のみに基づいて回答してください
-2. 質問に関連しない情報や無関係な内容は無視してください
-3. 具体的で実用的な情報を含めてください
+1. 提供された資料に基づいて詳細で豊富な回答を作成してください
+2. 資料の核心内容を十分に活用して深い説明を提供してください
+3. 質問に関連するすべての有用な情報を含めてください
 4. Markdown形式で回答を作成してください（見出し、太字、リストなどを活用）
-5. 読みやすいように2-3段落で構成してください
-6. 不確実な内容は推測しないでください
+5. 十分な内容で3-4段落で構成してください
+6. 具体的な例や詳細があれば含めてください
+7. 回答の最後に「詳細については下記の参考資料をご確認ください。」と追加してください
 
 %s
 
@@ -114,17 +117,18 @@ Answer (Markdown format):`
 5. 如需更多信息，请指导在哪里可以找到
 6. 明确说明未参考特定资料`
 		contextIntro = "以下是搜索到的相关资料：\n\n"
-		promptTemplate = `基于上述资料，请对以下问题提供全面准确的回答。
+		promptTemplate = `基于上述资料，请对以下问题提供全面详细的回答。
 
 问题: %s
 
 回答时请遵循以下要求：
-1. 仅基于提供的资料内容进行回答
-2. 忽略与问题无关的信息和内容
-3. 包含具体实用的信息
+1. 基于提供的资料创建详细丰富的回答
+2. 充分利用资料的核心内容提供深入解释
+3. 包含与问题相关的所有有用信息
 4. 使用Markdown格式撰写回答（使用标题、粗体、列表等）
-5. 分2-3段落组织，便于阅读
-6. 对不确定的内容不要推测
+5. 以充足内容分3-4段落组织
+6. 如有具体示例或详细信息请包含
+7. 在回答末尾添加"更多详细信息请参考下方参考资料。"
 
 %s
 
@@ -143,17 +147,18 @@ Please provide a helpful answer with the following guidelines:
 5. If additional information is needed, guide where it can be found
 6. Clearly state that no specific materials were referenced`
 		contextIntro = "Here are the relevant materials found:\n\n"
-		promptTemplate = `Based on the materials above, please provide a comprehensive and accurate answer to the following question.
+		promptTemplate = `Based on the materials above, please provide a comprehensive and detailed answer to the following question.
 
 Question: %s
 
 Please follow these guidelines when answering:
-1. Base your answer only on the provided materials
-2. Ignore information that is not relevant to the question
-3. Include specific and practical information
+1. Create a detailed and rich answer based on the provided materials
+2. Fully utilize the core content of the materials to provide in-depth explanations
+3. Include all useful information related to the question
 4. Write your answer in Markdown format (use headings, bold text, lists, etc.)
-5. Structure your response in 2-3 paragraphs for easy reading
-6. Do not speculate on uncertain information
+5. Structure your response in 3-4 paragraphs with sufficient content
+6. Include specific examples or details if available
+7. Add "Please refer to the reference materials below for more detailed information." at the end of your answer
 
 %s
 
@@ -273,17 +278,18 @@ func (s *Server) generateAnswerStream(ctx context.Context, query string, article
 5. 추가 정보가 필요한 경우 어디서 찾을 수 있는지 안내해주세요
 6. 특정 자료를 참조하지 않았음을 명시해주세요`
 		contextIntro = "다음은 검색된 관련 자료들입니다:\n\n"
-		promptTemplate = `위의 자료들을 바탕으로 다음 질문에 대해 종합적이고 정확한 답변을 해주세요.
+		promptTemplate = `위의 자료들을 기반으로 다음 질문에 대해 종합적이고 풍부한 답변을 해주세요.
 
 질문: %s
 
 답변할 때 다음 사항을 지켜주세요:
-1. 제공된 자료의 내용만을 바탕으로 답변하세요
-2. 질문과 관련이 없는 정보나 무관한 내용은 무시하세요
-3. 구체적이고 실용적인 정보를 포함하세요
+1. 제공된 자료를 기반으로 상세하고 풍부한 답변을 작성하세요
+2. 자료의 핵심 내용을 충분히 활용하여 깊이 있는 설명을 제공하세요
+3. 질문과 관련된 모든 유용한 정보를 포함하세요
 4. Markdown 형식으로 답변을 작성하세요 (제목, 굵은 글씨, 목록 등 활용)
-5. 2-3개 문단으로 구성하여 읽기 쉽게 작성하세요
-6. 확실하지 않은 내용은 추측하지 마세요
+5. 3-4개 문단으로 구성하여 충분한 분량으로 작성하세요
+6. 구체적인 예시나 세부사항이 있다면 포함하세요
+7. 답변 마지막에 "더 자세한 정보는 아래 참고 자료를 확인해 주세요."라고 추가하세요
 
 %s
 
@@ -301,17 +307,18 @@ Please provide a helpful answer with the following guidelines:
 5. If additional information is needed, guide where it can be found
 6. Clearly state that no specific materials were referenced`
 		contextIntro = "Here are the relevant materials found:\n\n"
-		promptTemplate = `Based on the materials above, please provide a comprehensive and accurate answer to the following question.
+		promptTemplate = `Based on the materials above, please provide a comprehensive and detailed answer to the following question.
 
 Question: %s
 
 Please follow these guidelines when answering:
-1. Base your answer only on the provided materials
-2. Ignore information that is not relevant to the question
-3. Include specific and practical information
+1. Create a detailed and rich answer based on the provided materials
+2. Fully utilize the core content of the materials to provide in-depth explanations
+3. Include all useful information related to the question
 4. Write your answer in Markdown format (use headings, bold text, lists, etc.)
-5. Structure your response in 2-3 paragraphs for easy reading
-6. Do not speculate on uncertain information
+5. Structure your response in 3-4 paragraphs with sufficient content
+6. Include specific examples or details if available
+7. Add "Please refer to the reference materials below for more detailed information." at the end of your answer
 
 %s
 
@@ -329,17 +336,18 @@ Answer (Markdown format):`
 5. 追加情報が必要な場合、どこで見つけられるかを案内してください
 6. 特定の資料を参照していないことを明示してください`
 		contextIntro = "以下は検索された関連資料です：\n\n"
-		promptTemplate = `上記の資料に基づいて、以下の質問に対して包括的で正確な回答をしてください。
+		promptTemplate = `上記の資料に基づいて、以下の質問に対して包括的で詳細な回答をしてください。
 
 質問: %s
 
 回答の際は以下の点にご注意ください：
-1. 提供された資料の内容のみに基づいて回答してください
-2. 質問に関連しない情報や無関係な内容は無視してください
-3. 具体的で実用的な情報を含めてください
+1. 提供された資料に基づいて詳細で豊富な回答を作成してください
+2. 資料の核心内容を十分に活用して深い説明を提供してください
+3. 質問に関連するすべての有用な情報を含めてください
 4. Markdown形式で回答を作成してください（見出し、太字、リストなどを活用）
-5. 読みやすいように2-3段落で構成してください
-6. 不確実な内容は推測しないでください
+5. 十分な内容で3-4段落で構成してください
+6. 具体的な例や詳細があれば含めてください
+7. 回答の最後に「詳細については下記の参考資料をご確認ください。」と追加してください
 
 %s
 
@@ -357,17 +365,18 @@ Answer (Markdown format):`
 5. 如需更多信息，请指导在哪里可以找到
 6. 明确说明未参考特定资料`
 		contextIntro = "以下是搜索到的相关资料：\n\n"
-		promptTemplate = `基于上述资料，请对以下问题提供全面准确的回答。
+		promptTemplate = `基于上述资料，请对以下问题提供全面详细的回答。
 
 问题: %s
 
 回答时请遵循以下要求：
-1. 仅基于提供的资料内容进行回答
-2. 忽略与问题无关的信息和内容
-3. 包含具体实用的信息
+1. 基于提供的资料创建详细丰富的回答
+2. 充分利用资料的核心内容提供深入解释
+3. 包含与问题相关的所有有用信息
 4. 使用Markdown格式撰写回答（使用标题、粗体、列表等）
-5. 分2-3段落组织，便于阅读
-6. 对不确定的内容不要推测
+5. 以充足内容分3-4段落组织
+6. 如有具体示例或详细信息请包含
+7. 在回答末尾添加"更多详细信息请参考下方参考资料。"
 
 %s
 
@@ -386,26 +395,23 @@ Please provide a helpful answer with the following guidelines:
 5. If additional information is needed, guide where it can be found
 6. Clearly state that no specific materials were referenced`
 		contextIntro = "Here are the relevant materials found:\n\n"
-		promptTemplate = `Based on the materials above, please provide a comprehensive and accurate answer to the following question.
+		promptTemplate = `Based on the materials above, please provide a comprehensive and detailed answer to the following question.
 
 Question: %s
 
 Please follow these guidelines when answering:
-1. Base your answer only on the provided materials
-2. Ignore information that is not relevant to the question
-3. Include specific and practical information
+1. Create a detailed and rich answer based on the provided materials
+2. Fully utilize the core content of the materials to provide in-depth explanations
+3. Include all useful information related to the question
 4. Write your answer in Markdown format (use headings, bold text, lists, etc.)
-5. Structure your response in 2-3 paragraphs for easy reading
-6. Do not speculate on uncertain information
+5. Structure your response in 3-4 paragraphs with sufficient content
+6. Include specific examples or details if available
+7. Add "Please refer to the reference materials below for more detailed information." at the end of your answer
 
 %s
 
 Answer (Markdown format):`
 	}
-
-	// if len(articles) == 0 {
-	// 	return callback(noResultsMessage)
-	// }
 
 	// Build context from search results
 	context := contextIntro

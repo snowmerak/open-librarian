@@ -75,7 +75,7 @@ func (h *HTTPServer) SearchStreamHandler(w http.ResponseWriter, r *http.Request)
 	}
 
 	// Combine and deduplicate vector results
-	combinedVectorResults := h.server.combineVectorResults(titleVectorResults, summaryVectorResults)
+	combinedVectorResults := h.server.combineVectorResults(titleVectorResults, summaryVectorResults, size*2)
 
 	// 4b. Keyword search with OpenSearch
 	keywordResp, err := h.server.opensearchClient.KeywordSearch(ctx, req.Query, queryLang, size*2, req.From)
@@ -107,14 +107,22 @@ func (h *HTTPServer) SearchStreamHandler(w http.ResponseWriter, r *http.Request)
 	// 6. Combine and deduplicate results
 	combinedResults := h.server.combineSearchResults(combinedVectorResults, vectorArticles, keywordResp.Results, size)
 
+	// 6.5. Validate search relevance using LLM
+	filteredResults, err := h.server.validateSearchRelevance(ctx, req.Query, combinedResults)
+	if err != nil {
+		log.Printf("Failed to validate search relevance: %v", err)
+		// Continue with original results if validation fails
+		filteredResults = combinedResults
+	}
+
 	// Send sources information
-	sourcesData, _ := json.Marshal(combinedResults)
+	sourcesData, _ := json.Marshal(filteredResults)
 	sendSSEMessage(w, "sources", string(sourcesData))
 	w.(http.Flusher).Flush()
 
 	// 7. Extract articles for AI answer generation
-	articles := make([]opensearch.Article, len(combinedResults))
-	for i, result := range combinedResults {
+	articles := make([]opensearch.Article, len(filteredResults))
+	for i, result := range filteredResults {
 		articles[i] = result.Article
 	}
 

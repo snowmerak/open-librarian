@@ -101,7 +101,7 @@ func (h *HTTPServer) WebSocketSearchHandler(w http.ResponseWriter, r *http.Reque
 		}
 
 		// 벡터 결과 결합 및 중복 제거
-		combinedVectorResults := h.server.combineVectorResults(titleVectorResults, summaryVectorResults)
+		combinedVectorResults := h.server.combineVectorResults(titleVectorResults, summaryVectorResults, size*2)
 
 		// 4b. OpenSearch 키워드 검색
 		keywordResp, err := h.server.opensearchClient.KeywordSearch(ctx, req.Query, queryLang, size*2, req.From)
@@ -133,15 +133,23 @@ func (h *HTTPServer) WebSocketSearchHandler(w http.ResponseWriter, r *http.Reque
 		// 6. 검색 결과 결합 및 중복 제거
 		combinedResults := h.server.combineSearchResults(combinedVectorResults, vectorArticles, keywordResp.Results, size)
 
+		// 6.5. LLM을 사용한 검색 관련성 검증
+		filteredResults, err := h.server.validateSearchRelevance(ctx, req.Query, combinedResults)
+		if err != nil {
+			log.Printf("Failed to validate search relevance: %v", err)
+			// 검증 실패 시 원본 결과 사용
+			filteredResults = combinedResults
+		}
+
 		// 참조 소스 전송
 		conn.WriteJSON(WSMessage{
 			Type: "sources",
-			Data: combinedResults,
+			Data: filteredResults,
 		})
 
 		// 7. AI 답변 생성을 위한 아티클 추출
-		articles := make([]opensearch.Article, len(combinedResults))
-		for i, result := range combinedResults {
+		articles := make([]opensearch.Article, len(filteredResults))
+		for i, result := range filteredResults {
 			articles[i] = result.Article
 		}
 
