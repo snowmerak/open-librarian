@@ -569,6 +569,7 @@ func (s *Server) Search(ctx context.Context, req *SearchRequest) (*SearchRespons
 
 	// 4b. Keyword search with OpenSearch
 	keywordResp, err := s.opensearchClient.KeywordSearch(ctx, req.Query, queryLang, size*2, req.From)
+	// keywordResp, err := s.opensearchClient.KeywordSearch(ctx, req.Query, queryLang, size*2, req.From)
 	if err != nil {
 		log.Printf("Keyword search failed: %v", err)
 		keywordResp = &opensearch.SearchResponse{Results: []opensearch.SearchResult{}}
@@ -627,7 +628,8 @@ func (s *Server) Search(ctx context.Context, req *SearchRequest) (*SearchRespons
 
 // combineSearchResults combines vector and keyword search results with scoring
 func (s *Server) combineSearchResults(vectorResults []qdrant.VectorSearchResult, vectorArticles []opensearch.Article, keywordResults []opensearch.SearchResult, limit int) []SearchResultWithScore {
-	const minScoreThreshold = 0.55 // Minimum score threshold for quality filtering
+	const minScoreThreshold = 0.45   // Minimum score threshold for quality filtering
+	const singleSourcePenalty = 0.75 // Penalty for non-hybrid results
 
 	// Create maps for easier lookup
 	vectorArticleMap := make(map[string]opensearch.Article)
@@ -677,14 +679,28 @@ func (s *Server) combineSearchResults(vectorResults []qdrant.VectorSearchResult,
 			}
 		} else {
 			normalizedScore := s.normalizeKeywordScore(result.Score)
-			log.Printf("Keyword only: ID=%s, Original=%.4f, Normalized=%.4f",
-				result.Article.ID, result.Score, normalizedScore)
+			// Apply penalty for keyword-only results
+			penalizedScore := normalizedScore * singleSourcePenalty
+			log.Printf("Keyword only: ID=%s, Original=%.4f, Normalized=%.4f, Penalized=%.4f",
+				result.Article.ID, result.Score, normalizedScore, penalizedScore)
 
 			resultMap[result.Article.ID] = SearchResultWithScore{
 				Article: result.Article,
-				Score:   normalizedScore,
+				Score:   penalizedScore,
 				Source:  "keyword",
 			}
+		}
+	}
+
+	// Apply penalty to vector-only results
+	for articleID, result := range resultMap {
+		if result.Source == "vector" {
+			penalizedScore := result.Score * singleSourcePenalty
+			log.Printf("Vector only: ID=%s, Original=%.4f, Penalized=%.4f",
+				articleID, result.Score, penalizedScore)
+
+			result.Score = penalizedScore
+			resultMap[articleID] = result
 		}
 	}
 
@@ -716,26 +732,24 @@ func (s *Server) combineSearchResults(vectorResults []qdrant.VectorSearchResult,
 	return combinedResults
 }
 
-// normalizeKeywordScore normalizes OpenSearch keyword scores to 0-1 range
+// normalizeKeywordScore normalizes OpenSearch keyword scores to 0-1 range using sigmoid function
 func (s *Server) normalizeKeywordScore(score float64) float64 {
 	if score <= 0 {
 		return 0.0
 	}
 
-	// Use logarithmic scaling: log(1 + score) / log(1 + max_expected_score)
-	// Max expected BM25 score is around 20 for very good matches
-	maxExpectedScore := 20.0
-	normalized := math.Log(1+score) / math.Log(1+maxExpectedScore)
+	// Use sigmoid function: 1 / (1 + exp(-k * (x - x0)))
+	// k = steepness parameter (higher = steeper curve)
+	// x0 = midpoint (score that maps to 0.5)
 
-	// Clamp to [0, 1] range
-	if normalized > 1.0 {
-		normalized = 1.0
-	}
-	if normalized < 0.0 {
-		normalized = 0.0
-	}
+	// For BM25 scores, typical good matches are around 5-15
+	// Set midpoint at 8 (maps to 0.5) and steepness k=0.5
+	k := 0.65
+	x0 := 18.0
 
-	return normalized
+	sigmoid := 1.0 / (1.0 + math.Exp(-k*(score-x0)))
+
+	return sigmoid
 }
 
 // generateAnswer creates an AI-powered answer based on search results
