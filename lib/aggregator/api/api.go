@@ -122,12 +122,21 @@ func (s *Server) AddArticle(ctx context.Context, req *ArticleRequest) (*ArticleR
 	log.Printf("Detected language: %s", lang)
 
 	// 3. Generate summary using Ollama
-	summaryPrompt := fmt.Sprintf(`Please summarize the following text in 3-4 sentences in English. Include key points and important information. Only return the summary without any additional text.
+	summaryPrompt := fmt.Sprintf(`Please create a comprehensive and detailed summary of the following text in English. You can write up to 8000 characters if needed to capture all important information.
+
+Guidelines for the summary:
+1. Include all key points, main arguments, and important details
+2. Maintain the logical structure and flow of the original content
+3. Include specific examples, data, or evidence mentioned in the text
+4. Cover any conclusions, recommendations, or actionable insights
+5. Write in clear, well-structured paragraphs
+6. You may use multiple paragraphs to organize different topics or sections
+7. Focus on being comprehensive rather than brief - detail is more valuable than brevity
 
 Text:
 %s
 
-Summary:`, req.Content)
+Detailed Summary:`, req.Content)
 
 	summary, err := s.ollamaClient.GenerateText(ctx, summaryPrompt)
 	if err != nil {
@@ -279,12 +288,21 @@ func (s *Server) AddArticleWithProgress(ctx context.Context, req *ArticleRequest
 	if err := reportProgress("Generating summary..."); err != nil {
 		return nil, err
 	}
-	summaryPrompt := fmt.Sprintf(`Please summarize the following text in 3-4 sentences in English. Include key points and important information.
+	summaryPrompt := fmt.Sprintf(`Please create a comprehensive and detailed summary of the following text in English. You can write up to 4000 characters if needed to capture all important information.
+
+Guidelines for the summary:
+1. Include all key points, main arguments, and important details
+2. Maintain the logical structure and flow of the original content
+3. Include specific examples, data, or evidence mentioned in the text
+4. Cover any conclusions, recommendations, or actionable insights
+5. Write in clear, well-structured paragraphs
+6. You may use multiple paragraphs to organize different topics or sections
+7. Focus on being comprehensive rather than brief - detail is more valuable than brevity
 
 Text:
 %s
 
-Summary:`, req.Content)
+Detailed Summary:`, req.Content)
 
 	// Use longer timeout for summary generation
 	summaryCtx, cancel := context.WithTimeout(ctx, 3*time.Minute)
@@ -915,7 +933,7 @@ Answer (Markdown format):`
 
 	for i, article := range articles {
 		// Determine whether to use content or summary based on content length
-		useContent := len(article.Content) < 4000
+		useContent := len(article.Content) < 12000
 		contentText := article.Summary
 		contentLabel := ""
 
