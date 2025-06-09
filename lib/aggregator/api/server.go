@@ -17,11 +17,12 @@ type Server struct {
 	opensearchClient *opensearch.Client
 	qdrantClient     *qdrant.Client
 	mongoClient      *mongo.Client
+	jwtService       *mongo.JWTService
 	languageDetector *language.Detector
 }
 
 // NewServer creates a new API server instance
-func NewServer(ollamaBaseURL, opensearchBaseURL, qdrantHost, mongoURI string, qdrantPort int) (*Server, error) {
+func NewServer(ollamaBaseURL, opensearchBaseURL, qdrantHost, mongoURI, jwtSecret string, qdrantPort int) (*Server, error) {
 	qdrantClient, err := qdrant.NewClient(qdrantHost, qdrantPort)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Qdrant client: %w", err)
@@ -48,11 +49,15 @@ func NewServer(ollamaBaseURL, opensearchBaseURL, qdrantHost, mongoURI string, qd
 		return nil, fmt.Errorf("failed to initialize MongoDB database: %w", err)
 	}
 
+	// Create JWT service
+	jwtService := mongo.NewJWTService(jwtSecret, "open-librarian")
+
 	return &Server{
 		ollamaClient:     ollama.NewClient(ollamaBaseURL),
 		opensearchClient: opensearch.NewClient(opensearchBaseURL),
 		qdrantClient:     qdrantClient,
 		mongoClient:      mongoClient,
+		jwtService:       jwtService,
 		languageDetector: language.NewDetector(),
 	}, nil
 }

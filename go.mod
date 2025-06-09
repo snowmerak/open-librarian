@@ -13,6 +13,7 @@ require (
 )
 
 require (
+	github.com/golang-jwt/jwt/v5 v5.2.2 // indirect
 	github.com/golang/snappy v1.0.0 // indirect
 	github.com/klauspost/compress v1.17.4 // indirect
 	github.com/shopspring/decimal v1.3.1 // indirect

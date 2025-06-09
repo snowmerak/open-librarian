@@ -25,6 +25,7 @@ func main() {
 	qdrantHost := getEnv("QDRANT_HOST", "localhost")
 	qdrantPortStr := getEnv("QDRANT_PORT", "6334")
 	mongoURI := getEnv("MONGODB_URI", "mongodb://localhost:27017/open_librarian")
+	jwtSecret := getEnv("JWT_SECRET", "your-super-secret-jwt-key-change-this-in-production")
 
 	// Convert qdrant port to integer
 	qdrantPort := 6334 // default
@@ -35,7 +36,7 @@ func main() {
 	}
 
 	// Initialize API server
-	apiServer, err := api.NewServer(ollamaURL, opensearchURL, qdrantHost, mongoURI, qdrantPort)
+	apiServer, err := api.NewServer(ollamaURL, opensearchURL, qdrantHost, mongoURI, jwtSecret, qdrantPort)
 	if err != nil {
 		log.Fatalf("Failed to create API server: %v", err)
 	}

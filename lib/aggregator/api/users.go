@@ -12,13 +12,28 @@ import (
 // RegisterUserRoutes registers user-related routes
 func (s *Server) RegisterUserRoutes(r chi.Router) {
 	r.Route("/users", func(r chi.Router) {
+		// Public routes (no authentication required)
 		r.Post("/", s.createUserHandler)
 		r.Post("/auth", s.authenticateUserHandler)
-		r.Get("/{id}", s.getUserByIDHandler)
-		r.Get("/username/{username}", s.getUserByUsernameHandler)
-		r.Put("/{id}", s.updateUserHandler)
-		r.Put("/{id}/password", s.changePasswordHandler)
-		r.Delete("/{id}", s.deleteUserHandler)
+		r.Post("/refresh", s.refreshTokenHandler)
+
+		// Protected routes (authentication required)
+		r.Group(func(r chi.Router) {
+			r.Use(s.JWTMiddleware(s.jwtService))
+
+			// Routes that require ownership verification
+			r.Group(func(r chi.Router) {
+				r.Use(RequireOwnership())
+				r.Get("/{id}", s.getUserByIDHandler)
+				r.Put("/{id}", s.updateUserHandler)
+				r.Put("/{id}/password", s.changePasswordHandler)
+				r.Delete("/{id}", s.deleteUserHandler)
+			})
+
+			// Routes accessible to any authenticated user
+			r.Get("/username/{username}", s.getUserByUsernameHandler)
+			r.Get("/me", s.getCurrentUserHandler)
+		})
 	})
 }
 
@@ -51,7 +66,7 @@ func (s *Server) createUserHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(user)
 }
 
-// authenticateUserHandler handles user authentication
+// authenticateUserHandler handles user authentication and returns JWT token
 func (s *Server) authenticateUserHandler(w http.ResponseWriter, r *http.Request) {
 	var credentials mongo.UserCredentials
 	if err := json.NewDecoder(r.Body).Decode(&credentials); err != nil {
@@ -65,7 +80,7 @@ func (s *Server) authenticateUserHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	user, err := s.mongoClient.AuthenticateUser(r.Context(), credentials)
+	authResponse, err := s.mongoClient.AuthenticateUserWithToken(r.Context(), credentials, s.jwtService)
 	if err != nil {
 		if err.Error() == "invalid email or password" {
 			http.Error(w, err.Error(), http.StatusUnauthorized)
@@ -76,7 +91,39 @@ func (s *Server) authenticateUserHandler(w http.ResponseWriter, r *http.Request)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(user)
+	json.NewEncoder(w).Encode(authResponse)
+}
+
+// RefreshTokenRequest represents a token refresh request
+type RefreshTokenRequest struct {
+	Token string `json:"token"`
+}
+
+// refreshTokenHandler handles JWT token refresh
+func (s *Server) refreshTokenHandler(w http.ResponseWriter, r *http.Request) {
+	var req RefreshTokenRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if req.Token == "" {
+		http.Error(w, "Token is required", http.StatusBadRequest)
+		return
+	}
+
+	newToken, err := s.jwtService.RefreshToken(req.Token)
+	if err != nil {
+		http.Error(w, "Invalid or expired token", http.StatusUnauthorized)
+		return
+	}
+
+	response := map[string]string{
+		"token": newToken,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
 }
 
 // getUserByIDHandler retrieves a user by ID
@@ -233,4 +280,16 @@ func (s *Server) deleteUserHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// getCurrentUserHandler returns the current authenticated user's information
+func (s *Server) getCurrentUserHandler(w http.ResponseWriter, r *http.Request) {
+	user, ok := GetUserFromContext(r)
+	if !ok {
+		http.Error(w, "Authentication required", http.StatusUnauthorized)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(user)
 }
