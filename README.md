@@ -133,7 +133,7 @@ func (s *Server) combineSearchResults(vectorResults []qdrant.VectorSearchResult,
     vectorArticles []opensearch.Article, keywordResults []opensearch.SearchResult, 
     limit int) []SearchResultWithScore {
     
-    const minScoreThreshold = 0.55 // 품질 필터링을 위한 최소 점수 임계값
+    const minScoreThreshold = 0.35 // 품질 필터링을 위한 최소 점수 임계값
 
     // 검색 결과 결합 및 중복 제거
     resultMap := make(map[string]SearchResultWithScore)
