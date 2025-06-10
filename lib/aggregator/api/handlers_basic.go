@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -431,4 +432,62 @@ func (h *HTTPServer) DeleteArticleHandler(w http.ResponseWriter, r *http.Request
 	deleteHandlerLogger.Info().Str("article_id", id).Msg("Article deleted successfully")
 	deleteHandlerLogger.EndWithMsg("Delete article request completed")
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// GetUserArticlesHandler handles user articles retrieval requests with date range
+func (h *HTTPServer) GetUserArticlesHandler(w http.ResponseWriter, r *http.Request) {
+	userArticlesLogger := logger.NewLogger("get-user-articles-handler")
+	userArticlesLogger.StartWithMsg("Processing get user articles request")
+
+	ctx := r.Context()
+
+	var req UserArticlesRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		userArticlesLogger.Error().Err(err).Msg("Invalid JSON format")
+		userArticlesLogger.EndWithError(err)
+		writeErrorResponse(w, http.StatusBadRequest, "invalid_json", "Invalid JSON format")
+		return
+	}
+
+	userArticlesLogger.Info().
+		Str("date_from", req.DateFrom).
+		Str("date_to", req.DateTo).
+		Int("size", req.Size).
+		Int("from", req.From).
+		Msg("User articles request details")
+
+	// Validate date formats if provided
+	if req.DateFrom != "" {
+		if _, err := time.Parse(time.RFC3339, req.DateFrom); err != nil {
+			userArticlesLogger.Error().Err(err).Str("date_from", req.DateFrom).Msg("Invalid date_from format")
+			userArticlesLogger.EndWithError(err)
+			writeErrorResponse(w, http.StatusBadRequest, "invalid_date_format", "date_from must be in RFC3339 format (e.g., 2023-12-25T15:30:00Z)")
+			return
+		}
+	}
+
+	if req.DateTo != "" {
+		if _, err := time.Parse(time.RFC3339, req.DateTo); err != nil {
+			userArticlesLogger.Error().Err(err).Str("date_to", req.DateTo).Msg("Invalid date_to format")
+			userArticlesLogger.EndWithError(err)
+			writeErrorResponse(w, http.StatusBadRequest, "invalid_date_format", "date_to must be in RFC3339 format (e.g., 2023-12-25T15:30:00Z)")
+			return
+		}
+	}
+
+	resp, err := h.server.GetUserArticles(ctx, &req)
+	if err != nil {
+		userArticlesLogger.Error().Err(err).Msg("Error getting user articles")
+		userArticlesLogger.EndWithError(err)
+		if strings.Contains(err.Error(), "authentication required") {
+			writeErrorResponse(w, http.StatusUnauthorized, "authentication_required", "Authentication required")
+			return
+		}
+		writeErrorResponse(w, http.StatusInternalServerError, "query_error", "Failed to get user articles")
+		return
+	}
+
+	userArticlesLogger.Info().Int("total", resp.Total).Int("returned", len(resp.Articles)).Msg("User articles retrieved successfully")
+	userArticlesLogger.EndWithMsg("Get user articles request completed")
+	writeJSONResponse(w, http.StatusOK, resp)
 }

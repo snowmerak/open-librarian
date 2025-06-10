@@ -155,3 +155,54 @@ func (s *Server) GetArticle(ctx context.Context, id string) (*opensearch.Article
 func (s *Server) GetSupportedLanguages() []string {
 	return s.languageDetector.GetSupportedLanguages()
 }
+
+// GetUserArticles retrieves articles registered by the current user within a date range
+func (s *Server) GetUserArticles(ctx context.Context, req *UserArticlesRequest) (*UserArticlesResponse, error) {
+	userArticlesLogger := logger.NewLogger("get_user_articles").StartWithMsg("Retrieving user articles")
+
+	// Extract user information from context
+	user, ok := ctx.Value(UserContextKey).(*mongo.User)
+	if !ok {
+		userArticlesLogger.Error().Msg("No user context found - authentication required")
+		userArticlesLogger.EndWithError(fmt.Errorf("authentication required"))
+		return nil, fmt.Errorf("authentication required")
+	}
+
+	userArticlesLogger.Info().Str("username", user.Username).Str("date_from", req.DateFrom).Str("date_to", req.DateTo).Msg("Fetching user articles")
+
+	// Set default values
+	size := req.Size
+	if size <= 0 || size > 100 {
+		size = 20 // Default size
+	}
+
+	from := req.From
+	if from < 0 {
+		from = 0
+	}
+
+	// Use OpenSearch to query articles by registrar and date range
+	resp, err := s.opensearchClient.GetUserArticlesByDateRange(ctx, user.Username, req.DateFrom, req.DateTo, size, from)
+	if err != nil {
+		userArticlesLogger.Error().Err(err).Msg("Failed to fetch user articles")
+		userArticlesLogger.EndWithError(err)
+		return nil, fmt.Errorf("failed to fetch user articles: %w", err)
+	}
+
+	// Convert SearchResult to Article slice
+	articles := make([]opensearch.Article, len(resp.Results))
+	for i, result := range resp.Results {
+		articles[i] = result.Article
+	}
+
+	userArticlesLogger.Info().Int("total", resp.Total).Int("returned", len(articles)).Msg("User articles retrieved successfully")
+	userArticlesLogger.EndWithMsg("User articles retrieval complete")
+
+	return &UserArticlesResponse{
+		Articles: articles,
+		Total:    resp.Total,
+		From:     from,
+		Size:     size,
+		Took:     resp.Took,
+	}, nil
+}

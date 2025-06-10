@@ -52,6 +52,7 @@ func (h *HTTPServer) SetupRoutes() *chi.Mux {
 			r.Use(h.server.JWTMiddleware(h.server.jwtService))
 			r.Post("/articles", h.AddArticleHandler)
 			r.Delete("/articles/{id}", h.DeleteArticleHandler)
+			r.Post("/articles/user", h.GetUserArticlesHandler) // New route for user articles by date range
 		})
 
 		// Articles (public routes)

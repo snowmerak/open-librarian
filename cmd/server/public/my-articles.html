@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>내 아티클 관리 - Open Librarian</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>">
+    <style>
+        .spinner {
+            border: 2px solid #f3f4f6;
+            border-top: 2px solid #4f46e5;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .article-item:hover {
+            transform: translateY(-2px);
+        }
+
+        .date-input {
+            transition: all 0.2s ease;
+        }
+
+        .date-input:focus {
+            ring: 2px;
+            ring-color: #4f46e5;
+            ring-opacity: 0.5;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen">
+    <!-- 네비게이션 바 -->
+    <nav class="bg-white shadow-sm border-b border-slate-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <a href="/public/index.html" class="flex items-center space-x-2">
+                        <span class="text-2xl">📚</span>
+                        <span class="text-xl font-bold text-slate-800">Open Librarian</span>
+                    </a>
+                    <span class="ml-4 text-sm text-slate-500">내 아티클 관리</span>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <a href="/public/index.html" class="text-slate-600 hover:text-indigo-600 transition-colors">
+                        검색
+                    </a>
+                    <a href="/public/articles.html" class="text-slate-600 hover:text-indigo-600 transition-colors">
+                        아티클 등록
+                    </a>
+                    <div id="user-info" class="flex items-center space-x-2">
+                        <span id="username" class="text-sm text-slate-600"></span>
+                        <button onclick="logout()" class="text-sm text-red-600 hover:text-red-700">로그아웃</button>
+                    </div>
+                    <div id="login-section" class="hidden">
+                        <a href="/public/auth.html" class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition-colors">
+                            로그인
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- 페이지 헤더 -->
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold text-slate-800 mb-2">내 아티클 관리</h1>
+            <p class="text-slate-600">등록한 아티클을 조회하고 관리할 수 있습니다.</p>
+        </div>
+
+        <!-- 검색 필터 -->
+        <div class="bg-white rounded-lg shadow-sm border border-slate-200 p-6 mb-6">
+            <h2 class="text-lg font-semibold text-slate-800 mb-4">검색 조건</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                <div>
+                    <label for="date-from" class="block text-sm font-medium text-slate-700 mb-2">시작 날짜</label>
+                    <input type="date" 
+                           id="date-from" 
+                           class="date-input w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                
+                <div>
+                    <label for="date-to" class="block text-sm font-medium text-slate-700 mb-2">종료 날짜</label>
+                    <input type="date" 
+                           id="date-to" 
+                           class="date-input w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                
+                <div class="md:col-span-2 flex items-end">
+                    <button onclick="searchUserArticles()" 
+                            class="bg-indigo-600 text-white px-6 py-2 rounded-md hover:bg-indigo-700 transition-colors mr-2">
+                        검색
+                    </button>
+                    <button onclick="document.getElementById('date-from').value=''; document.getElementById('date-to').value=''; searchUserArticles();" 
+                            class="bg-slate-600 text-white px-4 py-2 rounded-md hover:bg-slate-700 transition-colors">
+                        전체
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 빠른 날짜 선택 버튼들 -->
+            <div class="flex flex-wrap gap-2">
+                <span class="text-sm text-slate-600 mr-2">빠른 선택:</span>
+                <button onclick="setLastWeek(); searchUserArticles();" 
+                        class="px-3 py-1 text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 rounded transition-colors">
+                    최근 1주일
+                </button>
+                <button onclick="setLastMonth(); searchUserArticles();" 
+                        class="px-3 py-1 text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 rounded transition-colors">
+                    최근 1개월
+                </button>
+                <button onclick="setToday();" 
+                        class="px-3 py-1 text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 rounded transition-colors">
+                    오늘까지
+                </button>
+            </div>
+        </div>
+
+        <!-- 로딩 인디케이터 -->
+        <div id="user-articles-loading" class="hidden text-center py-8">
+            <div class="spinner mx-auto mb-4"></div>
+            <p class="text-slate-600">아티클을 불러오는 중...</p>
+        </div>
+
+        <!-- 아티클 목록 -->
+        <div id="user-articles-list" class="grid gap-4">
+            <!-- 아티클들이 여기에 동적으로 추가됩니다 -->
+        </div>
+
+        <!-- 페이지네이션 -->
+        <div id="user-articles-pagination" class="flex justify-center mt-8" style="display: none;">
+            <!-- 페이지네이션이 여기에 동적으로 추가됩니다 -->
+        </div>
+
+        <!-- 인증 필요 메시지 -->
+        <div id="auth-required" class="hidden text-center py-12">
+            <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="mx-auto mb-4 text-slate-400">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                <circle cx="12" cy="16" r="1"></circle>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+            <h3 class="text-lg font-semibold text-slate-600 mb-2">로그인이 필요합니다</h3>
+            <p class="text-slate-500 mb-4">내 아티클을 관리하려면 먼저 로그인해주세요.</p>
+            <a href="/public/auth.html" class="bg-indigo-600 text-white px-6 py-2 rounded-md hover:bg-indigo-700 transition-colors">
+                로그인 하기
+            </a>
+        </div>
+    </div>
+
+    <!-- JavaScript 파일들 -->
+    <script>
+        // API 기본 URL 설정
+        const API_BASE_URL = window.location.origin;
+    </script>
+    <script src="js/ui.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/user-articles.js"></script>
+    
+    <script>
+        // 페이지 로드 시 실행
+        document.addEventListener('DOMContentLoaded', function() {
+            // 인증 상태 확인
+            checkAuthStatus();
+            
+            // 로그인된 사용자인지 확인
+            const token = localStorage.getItem('jwt_token');
+            if (!token) {
+                document.getElementById('auth-required').classList.remove('hidden');
+                return;
+            }
+            
+            // 사용자 정보 표시
+            updateUserInfo();
+            
+            // 초기 아티클 목록 로드 (전체 기간)
+            userArticleManager.getUserArticles('', '', 0, 20);
+            
+            // Enter 키로 검색
+            document.getElementById('date-from').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    searchUserArticles();
+                }
+            });
+            
+            document.getElementById('date-to').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    searchUserArticles();
+                }
+            });
+        });
+
+        // 인증 상태 확인
+        function checkAuthStatus() {
+            const token = localStorage.getItem('jwt_token');
+            const userInfo = document.getElementById('user-info');
+            const loginSection = document.getElementById('login-section');
+            
+            if (token) {
+                userInfo.classList.remove('hidden');
+                loginSection.classList.add('hidden');
+            } else {
+                userInfo.classList.add('hidden');
+                loginSection.classList.remove('hidden');
+            }
+        }
+
+        // 사용자 정보 업데이트
+        function updateUserInfo() {
+            const userInfo = localStorage.getItem('user_info');
+            if (userInfo) {
+                try {
+                    const user = JSON.parse(userInfo);
+                    document.getElementById('username').textContent = user.username || '사용자';
+                } catch (e) {
+                    console.error('Error parsing user info:', e);
+                }
+            }
+        }
+
+        // 로그아웃
+        function logout() {
+            localStorage.removeItem('jwt_token');
+            localStorage.removeItem('user_info');
+            window.location.href = '/public/index.html';
+        }
+
+        // HTML 이스케이프 함수
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // 날짜 포맷팅 함수
+        function formatCreatedDate(dateString) {
+            if (!dateString) return 'Unknown';
+            
+            try {
+                const date = new Date(dateString);
+                return date.toLocaleDateString('ko-KR', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            } catch (e) {
+                return dateString;
+            }
+        }
+    </script>
+</body>
+</html>

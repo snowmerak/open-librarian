@@ -69,6 +69,7 @@ async function checkAuthStatus() {
 function updateAuthUI(isLoggedIn, user = null) {
     const loggedOutSection = document.getElementById('logged-out-section');
     const loggedInSection = document.getElementById('logged-in-section');
+    const myArticlesLink = document.getElementById('my-articles-link');
     
     if (isLoggedIn && user) {
         loggedOutSection.classList.add('hidden');
@@ -76,9 +77,19 @@ function updateAuthUI(isLoggedIn, user = null) {
         
         document.getElementById('user-username').textContent = user.username || user.email;
         document.getElementById('user-email').textContent = user.email;
+        
+        // Show the "내 아티클" link when logged in
+        if (myArticlesLink) {
+            myArticlesLink.style.display = 'flex';
+        }
     } else {
         loggedOutSection.classList.remove('hidden');
         loggedInSection.classList.add('hidden');
+        
+        // Hide the "내 아티클" link when logged out
+        if (myArticlesLink) {
+            myArticlesLink.style.display = 'none';
+        }
     }
 }
 

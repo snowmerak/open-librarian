@@ -631,27 +631,184 @@ func (c *Client) GetSupportedLanguages() []string {
 
 // DeleteArticle deletes an article from the index
 func (c *Client) DeleteArticle(ctx context.Context, id string) error {
-	url := fmt.Sprintf("%s/%s/_doc/%s", c.baseURL, DefaultIndexName, id)
+	deleteLogger := logger.NewLogger("opensearch-delete-article")
+	deleteLogger.StartWithMsg("Deleting article from OpenSearch")
+	deleteLogger.Info().Str("article_id", id).Msg("Article deletion request")
 
-	req, err := http.NewRequestWithContext(ctx, "DELETE", url, nil)
+	url := fmt.Sprintf("%s/%s/_doc/%s", c.baseURL, DefaultIndexName, id)
+	httpReq, err := http.NewRequestWithContext(ctx, "DELETE", url, nil)
 	if err != nil {
-		return fmt.Errorf("failed to create delete request: %w", err)
+		deleteLogger.EndWithError(err)
+		return fmt.Errorf("failed to create request: %w", err)
 	}
 
-	resp, err := c.httpClient.Do(req)
+	resp, err := c.httpClient.Do(httpReq)
 	if err != nil {
-		return fmt.Errorf("failed to execute delete request: %w", err)
+		deleteLogger.EndWithError(err)
+		return fmt.Errorf("failed to send request: %w", err)
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode == http.StatusNotFound {
-		return fmt.Errorf("article with id %s not found", id)
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNotFound {
+		body, _ := io.ReadAll(resp.Body)
+		deleteLogger.EndWithError(fmt.Errorf("delete failed with status %d", resp.StatusCode))
+		return fmt.Errorf("delete failed with status %d: %s", resp.StatusCode, string(body))
 	}
+
+	deleteLogger.Info().Str("article_id", id).Msg("Article deleted successfully")
+	deleteLogger.EndWithMsg("Article deletion completed")
+	return nil
+}
+
+// GetUserArticlesByDateRange retrieves articles registered by a specific user within a date range
+func (c *Client) GetUserArticlesByDateRange(ctx context.Context, username, dateFrom, dateTo string, size, from int) (*SearchResponse, error) {
+	userSearchLogger := logger.NewLogger("opensearch-user-articles-by-date")
+	userSearchLogger.StartWithMsg("Getting user articles by date range")
+
+	userSearchLogger.Info().
+		Str("username", username).
+		Str("date_from", dateFrom).
+		Str("date_to", dateTo).
+		Int("size", size).
+		Int("from", from).
+		Msg("User articles search parameters")
+
+	// Build the query for user articles with date range
+	query := map[string]interface{}{
+		"size":    size,
+		"from":    from,
+		"_source": []string{"title", "summary", "content", "original_url", "author", "lang", "tags", "created_date", "registrar"},
+		"query": map[string]interface{}{
+			"bool": map[string]interface{}{
+				"must": []map[string]interface{}{
+					{
+						"term": map[string]interface{}{
+							"registrar": username,
+						},
+					},
+				},
+			},
+		},
+		"sort": []map[string]interface{}{
+			{
+				"created_date": map[string]interface{}{
+					"order": "desc",
+				},
+			},
+		},
+	}
+
+	// Add date range filter if provided
+	if dateFrom != "" || dateTo != "" {
+		dateRange := map[string]interface{}{}
+		if dateFrom != "" {
+			dateRange["gte"] = dateFrom
+		}
+		if dateTo != "" {
+			dateRange["lte"] = dateTo
+		}
+
+		boolQuery := query["query"].(map[string]interface{})["bool"].(map[string]interface{})
+		boolQuery["must"] = append(boolQuery["must"].([]map[string]interface{}), map[string]interface{}{
+			"range": map[string]interface{}{
+				"created_date": dateRange,
+			},
+		})
+	}
+
+	// Log the search query
+	queryJSON, _ := json.MarshalIndent(query, "", "  ")
+	userSearchLogger.Debug().Str("search_query", string(queryJSON)).Msg("Generated user articles query")
+
+	reqBody, err := json.Marshal(query)
+	if err != nil {
+		userSearchLogger.EndWithError(err)
+		return nil, fmt.Errorf("failed to marshal query: %w", err)
+	}
+
+	url := fmt.Sprintf("%s/%s/_search", c.baseURL, DefaultIndexName)
+	userSearchLogger.Info().Str("url", url).Msg("User articles search request URL")
+
+	httpReq, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(reqBody))
+	if err != nil {
+		userSearchLogger.EndWithError(err)
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.httpClient.Do(httpReq)
+	if err != nil {
+		userSearchLogger.EndWithError(err)
+		return nil, fmt.Errorf("failed to send request: %w", err)
+	}
+	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("delete request failed with status %d: %s", resp.StatusCode, string(body))
+		userSearchLogger.Error().
+			Int("status_code", resp.StatusCode).
+			Str("response_body", string(body)).
+			Msg("OpenSearch error response")
+		userSearchLogger.EndWithError(fmt.Errorf("search failed with status %d", resp.StatusCode))
+		return nil, fmt.Errorf("search failed with status %d: %s", resp.StatusCode, string(body))
 	}
 
-	return nil
+	// Read response body
+	responseBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		userSearchLogger.EndWithError(err)
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	userSearchLogger.Debug().Str("raw_response", string(responseBody)).Msg("OpenSearch raw response")
+
+	var esResp struct {
+		Took int `json:"took"`
+		Hits struct {
+			Total struct {
+				Value int `json:"value"`
+			} `json:"total"`
+			Hits []struct {
+				ID     string  `json:"_id"`
+				Score  float64 `json:"_score"`
+				Source Article `json:"_source"`
+			} `json:"hits"`
+		} `json:"hits"`
+	}
+
+	if err := json.Unmarshal(responseBody, &esResp); err != nil {
+		userSearchLogger.EndWithError(err)
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	userSearchLogger.Info().
+		Int("total_results", esResp.Hits.Total.Value).
+		Int("returned_hits", len(esResp.Hits.Hits)).
+		Int("took_ms", esResp.Took).
+		Msg("User articles search completed")
+
+	results := make([]SearchResult, len(esResp.Hits.Hits))
+	for i, hit := range esResp.Hits.Hits {
+		results[i] = SearchResult{
+			Article: hit.Source,
+			Score:   hit.Score,
+		}
+		results[i].Article.ID = hit.ID
+		userSearchLogger.Debug().
+			Int("result_index", i+1).
+			Str("article_id", hit.ID).
+			Str("title", hit.Source.Title).
+			Str("created_date", hit.Source.CreatedDate.Format("2006-01-02T15:04:05Z")).
+			Msg("User article result")
+	}
+
+	response := &SearchResponse{
+		Total:   esResp.Hits.Total.Value,
+		Results: results,
+		Took:    esResp.Took,
+	}
+
+	userSearchLogger.EndWithMsg("User articles search completed successfully")
+	return response, nil
 }

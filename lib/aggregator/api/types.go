@@ -80,3 +80,20 @@ type ProgressCallback func(step string, progress int, total int) error
 
 // BulkProgressCallback represents a function that can be called to report bulk upload progress
 type BulkProgressCallback func(articleIndex int, totalArticles int, currentStep string, stepProgress int, stepTotal int, result *BulkArticleResult) error
+
+// UserArticlesRequest represents the request to get user's articles by date range
+type UserArticlesRequest struct {
+	DateFrom string `json:"date_from,omitempty"` // RFC3339 format for filtering articles created after this date
+	DateTo   string `json:"date_to,omitempty"`   // RFC3339 format for filtering articles created before this date
+	Size     int    `json:"size,omitempty"`      // Number of articles to return (default: 20, max: 100)
+	From     int    `json:"from,omitempty"`      // Offset for pagination (default: 0)
+}
+
+// UserArticlesResponse represents the response for user articles query
+type UserArticlesResponse struct {
+	Articles []opensearch.Article `json:"articles"`
+	Total    int                  `json:"total"`
+	From     int                  `json:"from"`
+	Size     int                  `json:"size"`
+	Took     int                  `json:"took"`
+}
