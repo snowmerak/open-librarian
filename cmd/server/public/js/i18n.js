@@ -42,6 +42,11 @@ const TRANSLATIONS = {
         passwordMismatch: 'Passwords do not match',
         invalidEmail: 'Please enter a valid email address',
         
+        // Common
+        user: 'User',
+        unknown: 'Unknown',
+        home: 'Home',
+        
         // Article Management
         articleAdd: 'Add Article',
         singleArticle: 'Single Article',
@@ -193,6 +198,11 @@ const TRANSLATIONS = {
         passwordRequired: '비밀번호를 입력해주세요',
         passwordMismatch: '비밀번호가 일치하지 않습니다',
         invalidEmail: '올바른 이메일 주소를 입력해주세요',
+        
+        // Common
+        user: '사용자',
+        unknown: '알 수 없음',
+        home: '홈',
         
         // Authentication
         login: '로그인',
@@ -375,6 +385,11 @@ const TRANSLATIONS = {
         passwordMismatch: '密码不匹配',
         invalidEmail: '请输入有效的电子邮件地址',
         
+        // Common
+        user: '用户',
+        unknown: '未知',
+        home: '首页',
+        
         // Article Management
         articleAdd: '添加文章',
         singleArticle: '单篇文章',
@@ -526,6 +541,11 @@ const TRANSLATIONS = {
         passwordRequired: 'パスワードは必須です',
         passwordMismatch: 'パスワードが一致しません',
         invalidEmail: '有効なメールアドレスを入力してください',
+        
+        // Common
+        user: 'ユーザー',
+        unknown: '不明',
+        home: 'ホーム',
         
         // Article Management
         articleAdd: '記事追加',
@@ -679,6 +699,11 @@ const TRANSLATIONS = {
         passwordMismatch: 'Las contraseñas no coinciden',
         invalidEmail: 'Por favor, ingresa una dirección de correo electrónico válida',
         
+        // Common
+        user: 'Usuario',
+        unknown: 'Desconocido',
+        home: 'Inicio',
+        
         // Article Management
         articleAdd: 'Agregar artículo',
         singleArticle: 'Artículo único',
@@ -791,7 +816,7 @@ const TRANSLATIONS = {
     }
 };
 
-let currentLanguage = 'en';
+let currentLanguage = 'ko'; // 기본값을 한국어로 설정
 
 // 번역 함수
 function t(key, params = {}) {
@@ -857,7 +882,7 @@ function formatCreatedDate(dateString) {
 
 // 언어 설정 저장/로드 (IndexedDB)
 async function saveLanguagePreference(language) {
-    if (!db) {
+    if (typeof db === 'undefined' || !db) {
         localStorage.setItem('librarian_language', language);
         return;
     }
@@ -881,8 +906,8 @@ async function saveLanguagePreference(language) {
 }
 
 async function loadLanguagePreference() {
-    if (!db) {
-        return localStorage.getItem('librarian_language') || 'en';
+    if (typeof db === 'undefined' || !db) {
+        return localStorage.getItem('librarian_language') || 'ko';
     }
     
     try {
@@ -893,15 +918,15 @@ async function loadLanguagePreference() {
             
             request.onsuccess = () => {
                 const result = request.result;
-                resolve(result ? result.value : 'en');
+                resolve(result ? result.value : 'ko');
             };
             request.onerror = () => {
-                resolve(localStorage.getItem('librarian_language') || 'en');
+                resolve(localStorage.getItem('librarian_language') || 'ko');
             };
         });
     } catch (error) {
         console.error('Failed to load language preference:', error);
-        return localStorage.getItem('librarian_language') || 'en';
+        return localStorage.getItem('librarian_language') || 'ko';
     }
 }
 
@@ -914,8 +939,20 @@ async function changeLanguage(language) {
 
 // 페이지의 모든 텍스트 업데이트
 function updatePageLanguage() {
-    // Update page title
-    document.title = t('appTitle');
+    // Update HTML lang attribute
+    const htmlRoot = document.getElementById('html-root') || document.documentElement;
+    if (htmlRoot) {
+        htmlRoot.lang = currentLanguage;
+    }
+    
+    // Update page title based on the page type
+    const titleElement = document.querySelector('title[data-i18n]');
+    if (titleElement) {
+        const titleKey = titleElement.getAttribute('data-i18n');
+        document.title = t(titleKey) + ' - ' + t('appTitle');
+    } else {
+        document.title = t('appTitle');
+    }
     
     // Update all elements with data-i18n attribute
     document.querySelectorAll('[data-i18n]').forEach(element => {
@@ -932,15 +969,22 @@ function updatePageLanguage() {
     // Update language selector
     updateLanguageSelector();
     
-    // Update search history display
-    updateHistoryDisplay();
+    // Update search history display if the function exists
+    if (typeof updateHistoryDisplay === 'function') {
+        updateHistoryDisplay();
+    }
 }
 
 // 언어 선택기 업데이트
 function updateLanguageSelector() {
     const languageSelect = document.getElementById('language-select');
+    const languageSelectMobile = document.getElementById('language-select-mobile');
+    
     if (languageSelect) {
         languageSelect.value = currentLanguage;
+    }
+    if (languageSelectMobile) {
+        languageSelectMobile.value = currentLanguage;
     }
 }
 

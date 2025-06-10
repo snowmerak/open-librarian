@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="ko" id="html-root">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -96,7 +96,7 @@
                     </div>
                 </div>
                 <div class="flex items-center space-x-6">
-                    <a href="/public/index.html" class="text-gray-600 hover:text-indigo-600 transition-colors font-medium" data-i18n="integratedSearch">
+                    <a href="/public/index.html" class="text-gray-600 hover:text-indigo-600 transition-colors font-medium" data-i18n="home">
                         홈
                     </a>
                     <div id="user-info" class="flex items-center space-x-3">
@@ -109,17 +109,6 @@
                         <a href="/public/auth.html" class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-6 py-2 rounded-full hover:from-indigo-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 font-medium" data-i18n="login">
                             로그인
                         </a>
-                    </div>
-                    
-                    <!-- 언어 선택기 -->
-                    <div class="ml-4">
-                        <select id="language-select" onchange="changeLanguage(this.value)" title="Language Selector" class="text-sm bg-white bg-opacity-20 text-white border border-white border-opacity-30 rounded-md px-3 py-1 focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50">
-                            <option value="en">EN</option>
-                            <option value="ko">KO</option>
-                            <option value="zh">ZH</option>
-                            <option value="ja">JA</option>
-                            <option value="es">ES</option>
-                        </select>
                     </div>
                 </div>
             </div>
@@ -225,11 +214,35 @@
         </div>
     </div>
 
+    <!-- 언어 선택기 푸터 -->
+    <footer class="bg-white border-t border-gray-200 py-6">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-center items-center space-x-4">
+                <label for="language-select" class="text-sm font-semibold text-gray-700" data-i18n="language">언어</label>
+                <select id="language-select" onchange="changeLanguage(this.value)" class="text-sm bg-white border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option value="en">English</option>
+                    <option value="ko">한국어</option>
+                    <option value="zh">中文</option>
+                    <option value="ja">日本語</option>
+                    <option value="es">Español</option>
+                </select>
+                <select id="language-select-mobile" onchange="changeLanguage(this.value)" title="Select Language" class="md:hidden text-sm bg-white border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option value="en">EN</option>
+                    <option value="ko">KO</option>
+                    <option value="zh">ZH</option>
+                    <option value="ja">JA</option>
+                    <option value="es">ES</option>
+                </select>
+            </div>
+        </div>
+    </footer>
+
     <!-- JavaScript 파일들 -->
     <script>
         // API 기본 URL 설정
         const API_BASE_URL = window.location.origin;
     </script>
+    <script src="js/database.js"></script>
     <script src="js/i18n.js"></script>
     <script src="js/ui.js"></script>
     <script src="js/auth.js"></script>
@@ -238,7 +251,16 @@
     <script>
         // 페이지 로드 시 실행
         document.addEventListener('DOMContentLoaded', async function() {
-            // 언어 초기화
+            // 데이터베이스 초기화 대기 (database.js가 로드되어야 함)
+            if (typeof initDatabase === 'function') {
+                try {
+                    await initDatabase();
+                } catch (error) {
+                    console.warn('Database initialization failed, using localStorage fallback:', error);
+                }
+            }
+            
+            // 언어 초기화를 가장 먼저 실행
             await initLanguage();
             
             // 인증 상태 확인
@@ -255,21 +277,49 @@
             updateUserInfo();
             
             // 초기 아티클 목록 로드 (전체 기간)
-            userArticleManager.getUserArticles('', '', 0, 20);
+            if (typeof userArticleManager !== 'undefined') {
+                userArticleManager.getUserArticles('', '', 0, 20);
+            }
             
             // Enter 키로 검색
-            document.getElementById('date-from').addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
-                    searchUserArticles();
-                }
-            });
+            const dateFrom = document.getElementById('date-from');
+            const dateTo = document.getElementById('date-to');
             
-            document.getElementById('date-to').addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
-                    searchUserArticles();
-                }
-            });
+            if (dateFrom) {
+                dateFrom.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        searchUserArticles();
+                    }
+                });
+            }
+            
+            if (dateTo) {
+                dateTo.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        searchUserArticles();
+                    }
+                });
+            }
         });
+
+        // 언어 변경 함수 오버라이드
+        if (typeof changeLanguage !== 'undefined') {
+            const originalChangeLanguage = window.changeLanguage;
+            window.changeLanguage = async function(language) {
+                try {
+                    await originalChangeLanguage(language);
+                    // 언어 변경 후 사용자 정보 다시 업데이트
+                    updateUserInfo();
+                } catch (error) {
+                    console.error('Language change failed:', error);
+                    // fallback: localStorage만 사용
+                    currentLanguage = language;
+                    localStorage.setItem('librarian_language', language);
+                    updatePageLanguage();
+                    updateUserInfo();
+                }
+            };
+        }
 
         // 인증 상태 확인
         function checkAuthStatus() {
@@ -292,7 +342,7 @@
             if (userInfo) {
                 try {
                     const user = JSON.parse(userInfo);
-                    document.getElementById('username').textContent = user.username || '사용자';
+                    document.getElementById('username').textContent = user.username || t('user') || '사용자';
                 } catch (e) {
                     console.error('Error parsing user info:', e);
                 }
