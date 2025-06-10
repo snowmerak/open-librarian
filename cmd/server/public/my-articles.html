@@ -21,8 +21,14 @@
             100% { transform: rotate(360deg); }
         }
 
+        .article-item {
+            transition: all 0.3s ease;
+            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+        }
+
         .article-item:hover {
-            transform: translateY(-2px);
+            transform: translateY(-4px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
         }
 
         .date-input {
@@ -34,33 +40,76 @@
             ring-color: #4f46e5;
             ring-opacity: 0.5;
         }
+
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .search-card {
+            background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%);
+            border: 1px solid #e2e8f0;
+        }
+
+        .quick-select-btn {
+            background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+            transition: all 0.2s ease;
+        }
+
+        .quick-select-btn:hover {
+            background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
+            transform: translateY(-1px);
+        }
+
+        .page-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background-size: 400% 400%;
+            animation: gradientShift 8s ease infinite;
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
     </style>
 </head>
-<body class="bg-slate-50 min-h-screen">
+<body class="bg-gray-50 min-h-screen">
     <!-- 네비게이션 바 -->
-    <nav class="bg-white shadow-sm border-b border-slate-200">
+    <nav class="glass-effect sticky top-0 z-50 shadow-lg">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between h-16">
                 <div class="flex items-center">
-                    <a href="/public/index.html" class="flex items-center space-x-2">
-                        <span class="text-2xl">📚</span>
-                        <span class="text-xl font-bold text-slate-800">Open Librarian</span>
+                    <a href="/public/index.html" class="flex items-center space-x-3 group">
+                        <span class="text-3xl group-hover:scale-110 transition-transform duration-200">📚</span>
+                        <span class="text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                            Open Librarian
+                        </span>
                     </a>
-                    <span class="ml-4 text-sm text-slate-500">내 아티클 관리</span>
+                    <div class="ml-6 px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm font-medium">
+                        내 아티클 관리
+                    </div>
                 </div>
-                <div class="flex items-center space-x-4">
-                    <a href="/public/index.html" class="text-slate-600 hover:text-indigo-600 transition-colors">
+                <div class="flex items-center space-x-6">
+                    <a href="/public/index.html" class="text-gray-600 hover:text-indigo-600 transition-colors font-medium">
                         검색
                     </a>
-                    <a href="/public/articles.html" class="text-slate-600 hover:text-indigo-600 transition-colors">
+                    <a href="/public/articles.html" class="text-gray-600 hover:text-indigo-600 transition-colors font-medium">
                         아티클 등록
                     </a>
-                    <div id="user-info" class="flex items-center space-x-2">
-                        <span id="username" class="text-sm text-slate-600"></span>
-                        <button onclick="logout()" class="text-sm text-red-600 hover:text-red-700">로그아웃</button>
+                    <div id="user-info" class="flex items-center space-x-3">
+                        <span id="username" class="text-sm text-gray-600 font-medium"></span>
+                        <button onclick="logout()" class="text-sm text-red-500 hover:text-red-700 font-medium transition-colors">
+                            로그아웃
+                        </button>
                     </div>
                     <div id="login-section" class="hidden">
-                        <a href="/public/auth.html" class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition-colors">
+                        <a href="/public/auth.html" class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-6 py-2 rounded-full hover:from-indigo-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 font-medium">
                             로그인
                         </a>
                     </div>
@@ -69,90 +118,102 @@
         </div>
     </nav>
 
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <!-- 페이지 헤더 -->
-        <div class="mb-8">
-            <h1 class="text-3xl font-bold text-slate-800 mb-2">내 아티클 관리</h1>
-            <p class="text-slate-600">등록한 아티클을 조회하고 관리할 수 있습니다.</p>
+    <!-- 페이지 헤더 -->
+    <div class="page-header text-white py-16">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h1 class="text-4xl md:text-5xl font-bold mb-4">내 아티클 관리</h1>
+            <p class="text-xl opacity-90 max-w-2xl mx-auto">등록한 아티클을 조회하고 관리할 수 있습니다</p>
         </div>
+    </div>
 
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <!-- 검색 필터 -->
-        <div class="bg-white rounded-lg shadow-sm border border-slate-200 p-6 mb-6">
-            <h2 class="text-lg font-semibold text-slate-800 mb-4">검색 조건</h2>
+        <div class="search-card rounded-2xl shadow-xl p-8 mb-8 transform hover:shadow-2xl transition-all duration-300">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+                <svg class="w-6 h-6 mr-3 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                </svg>
+                검색 조건
+            </h2>
             
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-                <div>
-                    <label for="date-from" class="block text-sm font-medium text-slate-700 mb-2">시작 날짜</label>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                <div class="space-y-2">
+                    <label for="date-from" class="block text-sm font-semibold text-gray-700">시작 날짜</label>
                     <input type="date" 
                            id="date-from" 
-                           class="date-input w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                           class="date-input w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all">
                 </div>
                 
-                <div>
-                    <label for="date-to" class="block text-sm font-medium text-slate-700 mb-2">종료 날짜</label>
+                <div class="space-y-2">
+                    <label for="date-to" class="block text-sm font-semibold text-gray-700">종료 날짜</label>
                     <input type="date" 
                            id="date-to" 
-                           class="date-input w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                           class="date-input w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all">
                 </div>
                 
-                <div class="md:col-span-2 flex items-end">
+                <div class="md:col-span-2 flex items-end space-x-3">
                     <button onclick="searchUserArticles()" 
-                            class="bg-indigo-600 text-white px-6 py-2 rounded-md hover:bg-indigo-700 transition-colors mr-2">
+                            class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-8 py-3 rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 font-medium">
+                        <svg class="w-5 h-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                        </svg>
                         검색
                     </button>
                     <button onclick="document.getElementById('date-from').value=''; document.getElementById('date-to').value=''; searchUserArticles();" 
-                            class="bg-slate-600 text-white px-4 py-2 rounded-md hover:bg-slate-700 transition-colors">
+                            class="bg-gray-500 text-white px-6 py-3 rounded-xl hover:bg-gray-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 font-medium">
                         전체
                     </button>
                 </div>
             </div>
             
             <!-- 빠른 날짜 선택 버튼들 -->
-            <div class="flex flex-wrap gap-2">
-                <span class="text-sm text-slate-600 mr-2">빠른 선택:</span>
+            <div class="flex flex-wrap gap-3 items-center">
+                <span class="text-sm font-semibold text-gray-700 mr-2">빠른 선택:</span>
                 <button onclick="setLastWeek(); searchUserArticles();" 
-                        class="px-3 py-1 text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 rounded transition-colors">
+                        class="quick-select-btn px-4 py-2 text-sm text-gray-700 rounded-xl transition-all font-medium shadow-sm">
                     최근 1주일
                 </button>
                 <button onclick="setLastMonth(); searchUserArticles();" 
-                        class="px-3 py-1 text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 rounded transition-colors">
+                        class="quick-select-btn px-4 py-2 text-sm text-gray-700 rounded-xl transition-all font-medium shadow-sm">
                     최근 1개월
                 </button>
                 <button onclick="setToday();" 
-                        class="px-3 py-1 text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 rounded transition-colors">
+                        class="quick-select-btn px-4 py-2 text-sm text-gray-700 rounded-xl transition-all font-medium shadow-sm">
                     오늘까지
                 </button>
             </div>
         </div>
 
         <!-- 로딩 인디케이터 -->
-        <div id="user-articles-loading" class="hidden text-center py-8">
+        <div id="user-articles-loading" class="hidden text-center py-16">
             <div class="spinner mx-auto mb-4"></div>
-            <p class="text-slate-600">아티클을 불러오는 중...</p>
+            <p class="text-gray-600 text-lg">아티클을 불러오는 중...</p>
         </div>
 
         <!-- 아티클 목록 -->
-        <div id="user-articles-list" class="grid gap-4">
+        <div id="user-articles-list" class="grid gap-6">
             <!-- 아티클들이 여기에 동적으로 추가됩니다 -->
         </div>
 
         <!-- 페이지네이션 -->
-        <div id="user-articles-pagination" class="flex justify-center mt-8" style="display: none;">
+        <div id="user-articles-pagination" class="flex justify-center mt-12" style="display: none;">
             <!-- 페이지네이션이 여기에 동적으로 추가됩니다 -->
         </div>
 
         <!-- 인증 필요 메시지 -->
-        <div id="auth-required" class="hidden text-center py-12">
-            <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="mx-auto mb-4 text-slate-400">
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                <circle cx="12" cy="16" r="1"></circle>
-                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-            </svg>
-            <h3 class="text-lg font-semibold text-slate-600 mb-2">로그인이 필요합니다</h3>
-            <p class="text-slate-500 mb-4">내 아티클을 관리하려면 먼저 로그인해주세요.</p>
-            <a href="/public/auth.html" class="bg-indigo-600 text-white px-6 py-2 rounded-md hover:bg-indigo-700 transition-colors">
-                로그인 하기
-            </a>
+        <div id="auth-required" class="hidden text-center py-20">
+            <div class="bg-white rounded-2xl shadow-xl p-12 max-w-md mx-auto">
+                <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="mx-auto mb-6 text-indigo-400">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                    <circle cx="12" cy="16" r="1"></circle>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
+                <h3 class="text-2xl font-bold text-gray-800 mb-3">로그인이 필요합니다</h3>
+                <p class="text-gray-600 mb-6 leading-relaxed">내 아티클을 관리하려면 먼저 로그인해주세요.</p>
+                <a href="/public/auth.html" class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-8 py-3 rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 font-medium inline-block">
+                    로그인 하기
+                </a>
+            </div>
         </div>
     </div>
 
