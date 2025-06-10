@@ -932,9 +932,30 @@ async function loadLanguagePreference() {
 
 // 언어 변경
 async function changeLanguage(language) {
+    const oldLanguage = currentLanguage;
     currentLanguage = language;
-    await saveLanguagePreference(language);
+    
+    // localStorage에 즉시 저장하여 다른 탭에서 감지할 수 있도록 함
+    localStorage.setItem('librarian_language', language);
+    
+    // IndexedDB에도 저장 시도
+    try {
+        await saveLanguagePreference(language);
+    } catch (error) {
+        console.warn('Failed to save language preference to IndexedDB:', error);
+    }
+    
     updatePageLanguage();
+    
+    // storage 이벤트 수동 발생 (같은 탭에서는 자동으로 발생하지 않음)
+    if (oldLanguage !== language) {
+        window.dispatchEvent(new StorageEvent('storage', {
+            key: 'librarian_language',
+            oldValue: oldLanguage,
+            newValue: language,
+            storageArea: localStorage
+        }));
+    }
 }
 
 // 페이지의 모든 텍스트 업데이트
@@ -993,4 +1014,17 @@ async function initLanguage() {
     const savedLanguage = await loadLanguagePreference();
     currentLanguage = savedLanguage;
     updatePageLanguage();
+    
+    // 다른 탭에서 언어가 변경되었을 때 동기화
+    window.addEventListener('storage', function(e) {
+        if (e.key === 'librarian_language' && e.newValue && e.newValue !== currentLanguage) {
+            currentLanguage = e.newValue;
+            updatePageLanguage();
+            
+            // 사용자 정보도 다시 업데이트 (my-articles.html에서 필요)
+            if (typeof updateUserInfo === 'function') {
+                updateUserInfo();
+            }
+        }
+    });
 }

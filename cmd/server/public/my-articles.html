@@ -303,23 +303,28 @@
         });
 
         // 언어 변경 함수 오버라이드
-        if (typeof changeLanguage !== 'undefined') {
-            const originalChangeLanguage = window.changeLanguage;
-            window.changeLanguage = async function(language) {
-                try {
-                    await originalChangeLanguage(language);
-                    // 언어 변경 후 사용자 정보 다시 업데이트
-                    updateUserInfo();
-                } catch (error) {
-                    console.error('Language change failed:', error);
-                    // fallback: localStorage만 사용
-                    currentLanguage = language;
-                    localStorage.setItem('librarian_language', language);
-                    updatePageLanguage();
-                    updateUserInfo();
+        window.addEventListener('load', function() {
+            // changeLanguage 함수가 로드된 후에 오버라이드
+            setTimeout(function() {
+                if (typeof changeLanguage === 'function') {
+                    const originalChangeLanguage = window.changeLanguage;
+                    window.changeLanguage = async function(language) {
+                        try {
+                            await originalChangeLanguage(language);
+                            // 언어 변경 후 사용자 정보 다시 업데이트
+                            updateUserInfo();
+                        } catch (error) {
+                            console.error('Language change failed:', error);
+                            // fallback: localStorage만 사용
+                            currentLanguage = language;
+                            localStorage.setItem('librarian_language', language);
+                            updatePageLanguage();
+                            updateUserInfo();
+                        }
+                    };
                 }
-            };
-        }
+            }, 100);
+        });
 
         // 인증 상태 확인
         function checkAuthStatus() {
