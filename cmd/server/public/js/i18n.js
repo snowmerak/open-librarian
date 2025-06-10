@@ -11,6 +11,7 @@ const TRANSLATIONS = {
         searchButton: 'Search',
         addArticle: 'Add Article',
         integratedSearch: 'Integrated Search',
+        myArticles: 'My Articles',
         
         // Authentication
         login: 'Login',
@@ -105,6 +106,42 @@ const TRANSLATIONS = {
         deleteError: 'Failed to delete article',
         deletePermissionDenied: 'Only the registrar can delete this article',
         
+        // My Articles Page
+        myArticlesPage: 'My Articles Management',
+        myArticlesDesc: 'You can view and manage your registered articles',
+        searchConditions: 'Search Conditions',
+        startDate: 'Start Date',
+        endDate: 'End Date',
+        searchArticles: 'Search Articles',
+        resetFilters: 'Reset Filters',
+        totalArticles: 'Total {count} articles',
+        articlesPerPage: 'articles per page',
+        loginRequired: 'Login Required',
+        loginRequiredDesc: 'Please log in first to manage your articles.',
+        loginNow: 'Login Now',
+        loadMore: 'Load More',
+        
+        // Article List
+        articleTitle: 'Title',
+        articleContent: 'Content',
+        articleCreatedAt: 'Created Date',
+        articleActions: 'Actions',
+        editArticle: 'Edit',
+        deleteArticle: 'Delete',
+        viewOriginalUrl: 'View Original',
+        noArticlesFound: 'No articles found',
+        noArticlesFoundDesc: 'You haven\'t registered any articles yet.',
+        
+        // Loading States
+        loadingArticles: 'Loading articles...',
+        searching: 'Searching...',
+        
+        // Quick Date Selection
+        quickSelect: 'Quick Select:',
+        lastWeek: 'Last Week',
+        lastMonth: 'Last Month',
+        toToday: 'To Today',
+        
         // Language Settings
         language: 'Language',
         languages: {
@@ -126,6 +163,7 @@ const TRANSLATIONS = {
         searchButton: '검색',
         addArticle: '아티클 추가',
         integratedSearch: '통합 검색',
+        myArticles: '내 아티클',
         
         // Authentication
         login: '로그인',
@@ -249,6 +287,42 @@ const TRANSLATIONS = {
         deleteError: '아티클 삭제에 실패했습니다',
         deletePermissionDenied: '등록자만 이 아티클을 삭제할 수 있습니다',
         
+        // My Articles Page
+        myArticlesPage: '내 아티클 관리',
+        myArticlesDesc: '등록한 아티클을 조회하고 관리할 수 있습니다',
+        searchConditions: '검색 조건',
+        startDate: '시작 날짜',
+        endDate: '종료 날짜',
+        searchArticles: '아티클 검색',
+        resetFilters: '필터 초기화',
+        totalArticles: '총 {count}개의 아티클',
+        articlesPerPage: '개씩 보기',
+        loginRequired: '로그인이 필요합니다',
+        loginRequiredDesc: '내 아티클을 관리하려면 먼저 로그인해주세요.',
+        loginNow: '로그인 하기',
+        loadMore: '더 보기',
+        
+        // Article List
+        articleTitle: '제목',
+        articleContent: '내용',
+        articleCreatedAt: '작성일',
+        articleActions: '작업',
+        editArticle: '수정',
+        deleteArticle: '삭제',
+        viewOriginalUrl: '원본 보기',
+        noArticlesFound: '아티클이 없습니다',
+        noArticlesFoundDesc: '아직 등록한 아티클이 없습니다.',
+        
+        // Loading States
+        loadingArticles: '아티클을 불러오는 중...',
+        searching: '검색 중...',
+        
+        // Quick Date Selection
+        quickSelect: '빠른 선택:',
+        lastWeek: '최근 1주일',
+        lastMonth: '최근 1개월',
+        toToday: '오늘까지',
+        
         // Language Settings
         language: '언어',
         languages: {
@@ -270,6 +344,7 @@ const TRANSLATIONS = {
         searchButton: '搜索',
         addArticle: '添加文章',
         integratedSearch: '综合搜索',
+        myArticles: '我的文章',
         
         // Authentication
         login: '登录',
@@ -364,6 +439,42 @@ const TRANSLATIONS = {
         deleteError: '删除文章失败',
         deletePermissionDenied: '只有注册者可以删除这篇文章',
         
+        // My Articles Page
+        myArticlesPage: '我的文章管理',
+        myArticlesDesc: '您可以查看和管理您注册的文章',
+        searchConditions: '搜索条件',
+        startDate: '开始日期',
+        endDate: '结束日期',
+        searchArticles: '搜索文章',
+        resetFilters: '重置筛选',
+        totalArticles: '共 {count} 篇文章',
+        articlesPerPage: '篇每页',
+        loginRequired: '需要登录',
+        loginRequiredDesc: '请先登录以管理您的文章。',
+        loginNow: '立即登录',
+        loadMore: '加载更多',
+        
+        // Article List
+        articleTitle: '标题',
+        articleContent: '内容',
+        articleCreatedAt: '创建日期',
+        articleActions: '操作',
+        editArticle: '编辑',
+        deleteArticle: '删除',
+        viewOriginalUrl: '查看原文',
+        noArticlesFound: '未找到文章',
+        noArticlesFoundDesc: '您还没有注册任何文章。',
+        
+        // Loading States
+        loadingArticles: '正在加载文章...',
+        searching: '搜索中...',
+        
+        // Quick Date Selection
+        quickSelect: '快速选择：',
+        lastWeek: '最近一周',
+        lastMonth: '最近一个月',
+        toToday: '至今天',
+        
         // Language Settings
         language: '语言',
         languages: {
@@ -385,6 +496,7 @@ const TRANSLATIONS = {
         searchButton: '検索',
         addArticle: '記事追加',
         integratedSearch: '統合検索',
+        myArticles: '私の記事',
         
         // Authentication
         login: 'ログイン',
@@ -479,6 +591,42 @@ const TRANSLATIONS = {
         deleteError: '記事の削除に失敗しました',
         deletePermissionDenied: '登録者のみがこの記事を削除できます',
         
+        // My Articles Page
+        myArticlesPage: '私の記事管理',
+        myArticlesDesc: '登録した記事を閲覧・管理できます',
+        searchConditions: '検索条件',
+        startDate: '開始日',
+        endDate: '終了日',
+        searchArticles: '記事検索',
+        resetFilters: 'フィルターリセット',
+        totalArticles: '合計 {count} 件の記事',
+        articlesPerPage: '件ずつ表示',
+        loginRequired: 'ログインが必要です',
+        loginRequiredDesc: '記事を管理するにはまずログインしてください。',
+        loginNow: 'ログインする',
+        loadMore: 'さらに表示',
+        
+        // Article List
+        articleTitle: 'タイトル',
+        articleContent: '内容',
+        articleCreatedAt: '作成日',
+        articleActions: '操作',
+        editArticle: '編集',
+        deleteArticle: '削除',
+        viewOriginalUrl: '元記事を見る',
+        noArticlesFound: '記事が見つかりません',
+        noArticlesFoundDesc: 'まだ記事を登録していません。',
+        
+        // Loading States
+        loadingArticles: '記事を読み込み中...',
+        searching: '検索中...',
+        
+        // Quick Date Selection
+        quickSelect: 'クイック選択：',
+        lastWeek: '過去1週間',
+        lastMonth: '過去1ヶ月',
+        toToday: '今日まで',
+        
         // Language Settings
         language: '言語',
         languages: {
@@ -500,6 +648,7 @@ const TRANSLATIONS = {
         searchButton: 'Buscar',
         addArticle: 'Agregar artículo',
         integratedSearch: 'Búsqueda integrada',
+        myArticles: 'Mis artículos',
         
         // Authentication
         login: 'Iniciar sesión',
@@ -586,6 +735,49 @@ const TRANSLATIONS = {
         hoursAgo: 'h atrás',
         removeResult: 'Eliminar resultado',
         searchingInProgress: 'Buscando...',
+        
+        // Article Actions
+        deleteArticle: 'Eliminar artículo',
+        deleteConfirm: '¿Está seguro de que desea eliminar este artículo?',
+        deleteSuccess: 'Artículo eliminado exitosamente',
+        deleteError: 'Error al eliminar el artículo',
+        deletePermissionDenied: 'Solo el registrador puede eliminar este artículo',
+        
+        // My Articles Page
+        myArticlesPage: 'Gestión de Mis Artículos',
+        myArticlesDesc: 'Puede ver y gestionar sus artículos registrados',
+        searchConditions: 'Condiciones de Búsqueda',
+        startDate: 'Fecha de Inicio',
+        endDate: 'Fecha de Fin',
+        searchArticles: 'Buscar Artículos',
+        resetFilters: 'Restablecer Filtros',
+        totalArticles: 'Total {count} artículos',
+        articlesPerPage: 'artículos por página',
+        loginRequired: 'Se Requiere Inicio de Sesión',
+        loginRequiredDesc: 'Por favor, inicie sesión primero para gestionar sus artículos.',
+        loginNow: 'Iniciar Sesión Ahora',
+        loadMore: 'Cargar Más',
+        
+        // Article List
+        articleTitle: 'Título',
+        articleContent: 'Contenido',
+        articleCreatedAt: 'Fecha de Creación',
+        articleActions: 'Acciones',
+        editArticle: 'Editar',
+        deleteArticle: 'Eliminar',
+        viewOriginalUrl: 'Ver Original',
+        noArticlesFound: 'No se encontraron artículos',
+        noArticlesFoundDesc: 'Aún no ha registrado ningún artículo.',
+        
+        // Loading States
+        loadingArticles: 'Cargando artículos...',
+        searching: 'Buscando...',
+        
+        // Quick Date Selection
+        quickSelect: 'Selección Rápida:',
+        lastWeek: 'Última Semana',
+        lastMonth: 'Último Mes',
+        toToday: 'Hasta Hoy',
         
         // Language Settings
         language: 'Idioma',

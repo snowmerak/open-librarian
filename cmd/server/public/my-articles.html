@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>내 아티클 관리 - Open Librarian</title>
+    <title data-i18n="myArticlesPage">내 아티클 관리</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>">
     <style>
@@ -91,24 +91,35 @@
                             Open Librarian
                         </span>
                     </a>
-                    <div class="ml-6 px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm font-medium">
+                    <div class="ml-6 px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm font-medium" data-i18n="myArticlesPage">
                         내 아티클 관리
                     </div>
                 </div>
                 <div class="flex items-center space-x-6">
-                    <a href="/public/index.html" class="text-gray-600 hover:text-indigo-600 transition-colors font-medium">
+                    <a href="/public/index.html" class="text-gray-600 hover:text-indigo-600 transition-colors font-medium" data-i18n="integratedSearch">
                         홈
                     </a>
                     <div id="user-info" class="flex items-center space-x-3">
                         <span id="username" class="text-sm text-gray-600 font-medium"></span>
-                        <button onclick="logout()" class="text-sm text-red-500 hover:text-red-700 font-medium transition-colors">
+                        <button onclick="logout()" class="text-sm text-red-500 hover:text-red-700 font-medium transition-colors" data-i18n="logout">
                             로그아웃
                         </button>
                     </div>
                     <div id="login-section" class="hidden">
-                        <a href="/public/auth.html" class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-6 py-2 rounded-full hover:from-indigo-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 font-medium">
+                        <a href="/public/auth.html" class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-6 py-2 rounded-full hover:from-indigo-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 font-medium" data-i18n="login">
                             로그인
                         </a>
+                    </div>
+                    
+                    <!-- 언어 선택기 -->
+                    <div class="ml-4">
+                        <select id="language-select" onchange="changeLanguage(this.value)" title="Language Selector" class="text-sm bg-white bg-opacity-20 text-white border border-white border-opacity-30 rounded-md px-3 py-1 focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50">
+                            <option value="en">EN</option>
+                            <option value="ko">KO</option>
+                            <option value="zh">ZH</option>
+                            <option value="ja">JA</option>
+                            <option value="es">ES</option>
+                        </select>
                     </div>
                 </div>
             </div>
@@ -118,8 +129,8 @@
     <!-- 페이지 헤더 -->
     <div class="page-header text-white py-16">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <h1 class="text-4xl md:text-5xl font-bold mb-4">내 아티클 관리</h1>
-            <p class="text-xl opacity-90 max-w-2xl mx-auto">등록한 아티클을 조회하고 관리할 수 있습니다</p>
+            <h1 class="text-4xl md:text-5xl font-bold mb-4" data-i18n="myArticlesPage">내 아티클 관리</h1>
+            <p class="text-xl opacity-90 max-w-2xl mx-auto" data-i18n="myArticlesDesc">등록한 아티클을 조회하고 관리할 수 있습니다</p>
         </div>
     </div>
 
@@ -130,19 +141,19 @@
                 <svg class="w-6 h-6 mr-3 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                 </svg>
-                검색 조건
+                <span data-i18n="searchConditions">검색 조건</span>
             </h2>
             
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
                 <div class="space-y-2">
-                    <label for="date-from" class="block text-sm font-semibold text-gray-700">시작 날짜</label>
+                    <label for="date-from" class="block text-sm font-semibold text-gray-700" data-i18n="startDate">시작 날짜</label>
                     <input type="date" 
                            id="date-from" 
                            class="date-input w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all">
                 </div>
                 
                 <div class="space-y-2">
-                    <label for="date-to" class="block text-sm font-semibold text-gray-700">종료 날짜</label>
+                    <label for="date-to" class="block text-sm font-semibold text-gray-700" data-i18n="endDate">종료 날짜</label>
                     <input type="date" 
                            id="date-to" 
                            class="date-input w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all">
@@ -154,10 +165,10 @@
                         <svg class="w-5 h-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                         </svg>
-                        검색
+                        <span data-i18n="searchArticles">검색</span>
                     </button>
                     <button onclick="document.getElementById('date-from').value=''; document.getElementById('date-to').value=''; searchUserArticles();" 
-                            class="bg-gray-500 text-white px-6 py-3 rounded-xl hover:bg-gray-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 font-medium">
+                            class="bg-gray-500 text-white px-6 py-3 rounded-xl hover:bg-gray-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 font-medium" data-i18n="resetFilters">
                         전체
                     </button>
                 </div>
@@ -165,17 +176,17 @@
             
             <!-- 빠른 날짜 선택 버튼들 -->
             <div class="flex flex-wrap gap-3 items-center">
-                <span class="text-sm font-semibold text-gray-700 mr-2">빠른 선택:</span>
+                <span class="text-sm font-semibold text-gray-700 mr-2" data-i18n="quickSelect">빠른 선택:</span>
                 <button onclick="setLastWeek(); searchUserArticles();" 
-                        class="quick-select-btn px-4 py-2 text-sm text-gray-700 rounded-xl transition-all font-medium shadow-sm">
+                        class="quick-select-btn px-4 py-2 text-sm text-gray-700 rounded-xl transition-all font-medium shadow-sm" data-i18n="lastWeek">
                     최근 1주일
                 </button>
                 <button onclick="setLastMonth(); searchUserArticles();" 
-                        class="quick-select-btn px-4 py-2 text-sm text-gray-700 rounded-xl transition-all font-medium shadow-sm">
+                        class="quick-select-btn px-4 py-2 text-sm text-gray-700 rounded-xl transition-all font-medium shadow-sm" data-i18n="lastMonth">
                     최근 1개월
                 </button>
                 <button onclick="setToday();" 
-                        class="quick-select-btn px-4 py-2 text-sm text-gray-700 rounded-xl transition-all font-medium shadow-sm">
+                        class="quick-select-btn px-4 py-2 text-sm text-gray-700 rounded-xl transition-all font-medium shadow-sm" data-i18n="toToday">
                     오늘까지
                 </button>
             </div>
@@ -184,7 +195,7 @@
         <!-- 로딩 인디케이터 -->
         <div id="user-articles-loading" class="hidden text-center py-16">
             <div class="spinner mx-auto mb-4"></div>
-            <p class="text-gray-600 text-lg">아티클을 불러오는 중...</p>
+            <p class="text-gray-600 text-lg" data-i18n="loadingArticles">아티클을 불러오는 중...</p>
         </div>
 
         <!-- 아티클 목록 -->
@@ -205,9 +216,9 @@
                     <circle cx="12" cy="16" r="1"></circle>
                     <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
                 </svg>
-                <h3 class="text-2xl font-bold text-gray-800 mb-3">로그인이 필요합니다</h3>
-                <p class="text-gray-600 mb-6 leading-relaxed">내 아티클을 관리하려면 먼저 로그인해주세요.</p>
-                <a href="/public/auth.html" class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-8 py-3 rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 font-medium inline-block">
+                <h3 class="text-2xl font-bold text-gray-800 mb-3" data-i18n="loginRequired">로그인이 필요합니다</h3>
+                <p class="text-gray-600 mb-6 leading-relaxed" data-i18n="loginRequiredDesc">내 아티클을 관리하려면 먼저 로그인해주세요.</p>
+                <a href="/public/auth.html" class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-8 py-3 rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 font-medium inline-block" data-i18n="loginNow">
                     로그인 하기
                 </a>
             </div>
@@ -219,13 +230,17 @@
         // API 기본 URL 설정
         const API_BASE_URL = window.location.origin;
     </script>
+    <script src="js/i18n.js"></script>
     <script src="js/ui.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/user-articles.js"></script>
     
     <script>
         // 페이지 로드 시 실행
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', async function() {
+            // 언어 초기화
+            await initLanguage();
+            
             // 인증 상태 확인
             checkAuthStatus();
             
@@ -300,11 +315,22 @@
 
         // 날짜 포맷팅 함수
         function formatCreatedDate(dateString) {
-            if (!dateString) return 'Unknown';
+            if (!dateString) return t('unknown') || 'Unknown';
             
             try {
+                // i18n의 formatCreatedDate 함수 사용
+                if (typeof formatCreatedDate !== 'undefined' && window.formatCreatedDate) {
+                    return window.formatCreatedDate(dateString);
+                }
+                
+                // 기본 포맷팅
                 const date = new Date(dateString);
-                return date.toLocaleDateString('ko-KR', {
+                const locale = currentLanguage === 'ko' ? 'ko-KR' : 
+                              currentLanguage === 'zh' ? 'zh-CN' :
+                              currentLanguage === 'ja' ? 'ja-JP' :
+                              currentLanguage === 'es' ? 'es-ES' : 'en-US';
+                              
+                return date.toLocaleDateString(locale, {
                     year: 'numeric',
                     month: 'long',
                     day: 'numeric',
