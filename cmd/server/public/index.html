@@ -8,57 +8,183 @@
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
     <link rel="stylesheet" href="css/styles.css">
-</head>
-<body class="bg-slate-100 text-slate-800">
+    <style>
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
 
-    <div class="flex h-screen bg-slate-50">
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .nav-link {
+            transition: all 0.3s ease;
+            border-radius: 12px;
+        }
+
+        .nav-link:hover {
+            background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+            transform: translateX(4px);
+        }
+
+        .nav-link.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .search-container {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background-size: 400% 400%;
+            animation: gradientShift 8s ease infinite;
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .search-input {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .search-input:focus {
+            background: rgba(255, 255, 255, 1);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            transform: translateY(-2px);
+        }
+
+        .search-btn {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            transition: all 0.3s ease;
+        }
+
+        .search-btn:hover {
+            background: linear-gradient(135deg, #4338ca 0%, #6d28d9 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(79, 70, 229, 0.4);
+        }
+
+        .form-card {
+            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+            border: 1px solid #e2e8f0;
+            transition: all 0.3s ease;
+        }
+
+        .form-card:hover {
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #4338ca 0%, #6d28d9 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(79, 70, 229, 0.4);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+            transition: all 0.3s ease;
+        }
+
+        .btn-secondary:hover {
+            background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
+            transform: translateY(-1px);
+        }
+
+        .auth-modal {
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+        }
+
+        .auth-card {
+            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+            border: 1px solid #e2e8f0;
+        }
+
+        .sidebar-gradient {
+            background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+        }
+
+        .logo-container {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .user-avatar {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+        }
+
+        .history-item {
+            transition: all 0.2s ease;
+            border-radius: 8px;
+        }
+
+        .history-item:hover {
+            background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+            transform: translateX(4px);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-slate-800">
+
+    <div class="flex h-screen bg-gray-50">
         <!-- 사이드바 네비게이션 -->
-        <aside class="w-16 md:w-64 bg-white border-r border-slate-200 flex flex-col">
-            <div class="h-16 flex items-center justify-center border-b border-slate-200">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-indigo-600"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/><path d="m12 20 4-4"/></svg>
-                <h1 class="hidden md:block text-xl font-bold ml-2 text-slate-800" data-i18n="appTitle">Open Librarian</h1>
+        <aside class="w-16 md:w-64 sidebar-gradient border-r border-slate-200 flex flex-col shadow-xl">
+            <div class="h-16 flex items-center justify-center border-b border-slate-200 logo-container">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-white"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/><path d="m12 20 4-4"/></svg>
+                <h1 class="hidden md:block text-xl font-bold ml-2 text-white" data-i18n="appTitle">Open Librarian</h1>
             </div>
-            <nav class="flex-1 p-4 space-y-2">
-                <a href="#" onclick="showView('search-view')" class="nav-link active">
+            <nav class="flex-1 p-4 space-y-3">
+                <a href="#" onclick="showView('search-view')" class="nav-link active flex items-center p-3 text-sm font-medium">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                    <span class="hidden md:inline" data-i18n="integratedSearch">통합 검색</span>
+                    <span class="hidden md:inline ml-3" data-i18n="integratedSearch">통합 검색</span>
                 </a>
-                <a href="#" onclick="showView('add-view')" class="nav-link">
+                <a href="#" onclick="showView('add-view')" class="nav-link flex items-center p-3 text-sm font-medium text-gray-600 hover:text-gray-800">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-                    <span class="hidden md:inline" data-i18n="addArticle">아티클 추가</span>
+                    <span class="hidden md:inline ml-3" data-i18n="addArticle">아티클 추가</span>
                 </a>
-                <a href="my-articles.html" class="nav-link" id="my-articles-link" style="display: none;">
+                <a href="my-articles.html" class="nav-link flex items-center p-3 text-sm font-medium text-gray-600 hover:text-gray-800" id="my-articles-link" style="display: none;">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14,2 14,8 20,8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10,9 9,9 8,9"></polyline></svg>
-                    <span class="hidden md:inline" data-i18n="myArticles">내 아티클</span>
+                    <span class="hidden md:inline ml-3" data-i18n="myArticles">내 아티클</span>
                 </a>
             </nav>
             
             <!-- 사용자 인증 상태 -->
             <div id="auth-section" class="border-t border-slate-200 p-4">
                 <!-- 로그인되지 않은 상태 -->
-                <div id="logged-out-section" class="space-y-2">
-                    <button onclick="showAuthModal('login')" class="w-full text-sm bg-indigo-600 text-white py-2 px-3 rounded-md hover:bg-indigo-700 transition" data-i18n="login">
+                <div id="logged-out-section" class="space-y-3">
+                    <button onclick="showAuthModal('login')" class="w-full text-sm btn-primary text-white py-3 px-4 rounded-xl font-medium shadow-lg" data-i18n="login">
                         로그인
                     </button>
-                    <button onclick="showAuthModal('signup')" class="w-full text-sm border border-slate-300 text-slate-700 py-2 px-3 rounded-md hover:bg-slate-50 transition" data-i18n="signup">
+                    <button onclick="showAuthModal('signup')" class="w-full text-sm btn-secondary text-gray-700 py-3 px-4 rounded-xl font-medium" data-i18n="signup">
                         회원가입
                     </button>
                 </div>
                 
                 <!-- 로그인된 상태 -->
                 <div id="logged-in-section" class="hidden">
-                    <div class="flex items-center justify-between mb-2">
-                        <div class="flex items-center space-x-2">
-                            <div class="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-indigo-600"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-10 h-10 user-avatar rounded-full flex items-center justify-center shadow-lg">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-white"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                             </div>
                             <div class="hidden md:block">
-                                <div id="user-username" class="text-sm font-medium text-slate-700"></div>
-                                <div id="user-email" class="text-xs text-slate-500"></div>
+                                <div id="user-username" class="text-sm font-semibold text-gray-800"></div>
+                                <div id="user-email" class="text-xs text-gray-500"></div>
                             </div>
                         </div>
                     </div>
-                    <button onclick="logout()" class="w-full text-sm border border-slate-300 text-slate-700 py-2 px-3 rounded-md hover:bg-slate-50 transition" data-i18n="logout">
+                    <button onclick="logout()" class="w-full text-sm btn-secondary text-gray-700 py-3 px-4 rounded-xl font-medium" data-i18n="logout">
                         로그아웃
                     </button>
                 </div>
@@ -67,8 +193,8 @@
             <!-- 언어 선택기 -->
             <div class="border-t border-slate-200 p-4">
                 <div class="hidden md:block">
-                    <label for="language-select" class="text-sm font-semibold text-slate-600 mb-2 block" data-i18n="language">언어</label>
-                    <select id="language-select" onchange="changeLanguage(this.value)" class="w-full text-sm bg-white border border-slate-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <label for="language-select" class="text-sm font-semibold text-gray-700 mb-3 block" data-i18n="language">언어</label>
+                    <select id="language-select" onchange="changeLanguage(this.value)" class="w-full text-sm bg-white border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm">
                         <option value="en">English</option>
                         <option value="ko">한국어</option>
                         <option value="zh">中文</option>
@@ -89,11 +215,11 @@
             
             <!-- 검색 히스토리 -->
             <div class="border-t border-slate-200 p-4 flex-1 overflow-hidden">
-                <div class="flex justify-between items-center mb-3">
-                    <h3 class="text-sm font-semibold text-slate-600 hidden md:block" data-i18n="searchRecent">최근 검색</h3>
-                    <button onclick="clearSearchHistory()" class="clear-history text-xs hidden md:block" data-i18n="clearAll">전체 삭제</button>
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-sm font-semibold text-gray-700 hidden md:block" data-i18n="searchRecent">최근 검색</h3>
+                    <button onclick="clearSearchHistory()" class="clear-history text-xs hidden md:block text-indigo-600 hover:text-indigo-800 font-medium" data-i18n="clearAll">전체 삭제</button>
                 </div>
-                <div id="search-history" class="space-y-1 h-full overflow-y-auto">
+                <div id="search-history" class="space-y-2 h-full overflow-y-auto">
                     <!-- 히스토리 항목들이 여기에 표시됩니다 -->
                 </div>
             </div>
@@ -105,11 +231,13 @@
             <!-- 1. 통합 검색 화면 -->
             <div id="search-view" class="view flex flex-col h-full">
                 <!-- 검색바를 상단에 고정 -->
-                <header class="bg-white border-b border-slate-200 p-6">
-                    <div class="max-w-4xl mx-auto">
-                        <div class="relative">
-                            <input id="search-input" type="text" data-i18n-placeholder="searchPlaceholder" placeholder="궁금한 내용을 자유롭게 질문하세요..." class="w-full pl-4 pr-12 py-4 text-lg border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
-                            <button onclick="handleSearch()" class="absolute right-3 top-1/2 -translate-y-1/2 p-3 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition" title="Search">
+                <header class="search-container p-8">
+                    <div class="max-w-4xl mx-auto text-center">
+                        <h1 class="text-4xl md:text-5xl font-bold text-white mb-4">Open Librarian</h1>
+                        <p class="text-xl text-white opacity-90 mb-8">지식을 검색하고 공유하는 스마트한 방법</p>
+                        <div class="relative max-w-2xl mx-auto">
+                            <input id="search-input" type="text" data-i18n-placeholder="searchPlaceholder" placeholder="궁금한 내용을 자유롭게 질문하세요..." class="search-input w-full pl-6 pr-16 py-4 text-lg rounded-2xl focus:outline-none focus:ring-4 focus:ring-white focus:ring-opacity-30">
+                            <button onclick="handleSearch()" class="search-btn absolute right-2 top-1/2 -translate-y-1/2 p-3 text-white rounded-xl font-medium shadow-lg" title="Search">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                             </button>
                         </div>
@@ -120,9 +248,9 @@
                 <div id="search-results" class="flex-1 p-6 overflow-y-auto">
                     <div class="max-w-4xl mx-auto">
                         <div id="welcome-message" class="text-center py-20">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="mx-auto mb-4 text-slate-400"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                            <h3 class="text-xl font-semibold text-slate-600 mb-2" data-i18n="searchWelcomeTitle">지식을 검색해보세요</h3>
-                            <p class="text-slate-500" data-i18n="searchWelcomeDesc">저장된 아티클들을 바탕으로 정확한 답변을 제공합니다.</p>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="mx-auto mb-6 text-indigo-400"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                            <h3 class="text-2xl font-bold text-gray-800 mb-3" data-i18n="searchWelcomeTitle">지식을 검색해보세요</h3>
+                            <p class="text-gray-600 text-lg" data-i18n="searchWelcomeDesc">저장된 아티클들을 바탕으로 정확한 답변을 제공합니다.</p>
                         </div>
                         <!-- 검색 결과가 여기에 표시됩니다 -->
                     </div>
@@ -131,18 +259,18 @@
 
             <!-- 2. 아티클 추가 화면 -->
             <div id="add-view" class="view hidden">
-                <header class="h-16 flex items-center px-6 border-b border-slate-200 bg-white">
-                    <h2 class="text-lg font-semibold" data-i18n="articleAdd">아티클 추가</h2>
+                <header class="h-20 flex items-center px-8 border-b border-slate-200 glass-effect">
+                    <h2 class="text-2xl font-bold text-gray-800" data-i18n="articleAdd">아티클 추가</h2>
                 </header>
-                <div class="flex-1 p-6 overflow-y-auto">
-                    <div class="max-w-2xl mx-auto space-y-6">
+                <div class="flex-1 p-8 overflow-y-auto">
+                    <div class="max-w-2xl mx-auto space-y-8">
                         <!-- 탭 선택 -->
-                        <div class="bg-white rounded-lg shadow-sm border border-slate-200">
+                        <div class="form-card rounded-2xl shadow-xl">
                             <div class="flex border-b border-slate-200">
-                                <button onclick="showAddTab('single')" id="single-tab" class="flex-1 px-6 py-3 text-sm font-medium text-indigo-600 border-b-2 border-indigo-600" data-i18n="singleArticle">
+                                <button onclick="showAddTab('single')" id="single-tab" class="flex-1 px-8 py-4 text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-purple-600 rounded-tl-2xl" data-i18n="singleArticle">
                                     단일 아티클
                                 </button>
-                                <button onclick="showAddTab('bulk')" id="bulk-tab" class="flex-1 px-6 py-3 text-sm font-medium text-slate-500 hover:text-slate-700" data-i18n="bulkUpload">
+                                <button onclick="showAddTab('bulk')" id="bulk-tab" class="flex-1 px-8 py-4 text-sm font-semibold text-gray-600 hover:text-gray-800 rounded-tr-2xl" data-i18n="bulkUpload">
                                     대량 업로드 (JSONL)
                                 </button>
                             </div>
@@ -151,27 +279,27 @@
                             <div id="single-add" class="p-8">
                                 <form id="add-article-form" class="space-y-6">
                                     <div>
-                                        <label for="title" class="form-label" data-i18n="title">제목</label>
-                                        <input type="text" id="title" name="title" class="form-input" data-i18n-placeholder="titlePlaceholder" placeholder="아티클의 제목을 입력하세요" required>
+                                        <label for="title" class="form-label block text-sm font-semibold text-gray-700 mb-2" data-i18n="title">제목</label>
+                                        <input type="text" id="title" name="title" class="form-input w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all" data-i18n-placeholder="titlePlaceholder" placeholder="아티클의 제목을 입력하세요" required>
                                     </div>
                                     <div>
-                                        <label for="content" class="form-label" data-i18n="content">내용</label>
-                                        <textarea id="content" name="content" rows="10" class="form-input" data-i18n-placeholder="contentPlaceholder" placeholder="아티클의 전체 내용을 붙여넣으세요" required></textarea>
+                                        <label for="content" class="form-label block text-sm font-semibold text-gray-700 mb-2" data-i18n="content">내용</label>
+                                        <textarea id="content" name="content" rows="12" class="form-input w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all" data-i18n-placeholder="contentPlaceholder" placeholder="아티클의 전체 내용을 붙여넣으세요" required></textarea>
                                     </div>
                                     <div>
-                                        <label for="original_url" class="form-label" data-i18n="originalUrl">원본 URL (선택)</label>
-                                        <input type="url" id="original_url" name="original_url" class="form-input" data-i18n-placeholder="urlPlaceholder" placeholder="https://example.com/article">
+                                        <label for="original_url" class="form-label block text-sm font-semibold text-gray-700 mb-2" data-i18n="originalUrl">원본 URL (선택)</label>
+                                        <input type="url" id="original_url" name="original_url" class="form-input w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all" data-i18n-placeholder="urlPlaceholder" placeholder="https://example.com/article">
                                     </div>
                                     <div>
-                                        <label for="author" class="form-label" data-i18n="author">작성자 (선택)</label>
-                                        <input type="text" id="author" name="author" class="form-input" data-i18n-placeholder="authorPlaceholder" placeholder="홍길동">
+                                        <label for="author" class="form-label block text-sm font-semibold text-gray-700 mb-2" data-i18n="author">작성자 (선택)</label>
+                                        <input type="text" id="author" name="author" class="form-input w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all" data-i18n-placeholder="authorPlaceholder" placeholder="홍길동">
                                     </div>
                                     <div>
-                                        <label for="created_date" class="form-label" data-i18n="createdDate">작성일 (선택)</label>
-                                        <input type="datetime-local" id="created_date" name="created_date" class="form-input" data-i18n-placeholder="createdDatePlaceholder">
-                                        <p class="mt-1 text-sm text-slate-500" data-i18n="createdDateHelp">미입력시 현재 시간으로 설정됩니다</p>
+                                        <label for="created_date" class="form-label block text-sm font-semibold text-gray-700 mb-2" data-i18n="createdDate">작성일 (선택)</label>
+                                        <input type="datetime-local" id="created_date" name="created_date" class="form-input w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all" data-i18n-placeholder="createdDatePlaceholder">
+                                        <p class="mt-1 text-sm text-gray-500" data-i18n="createdDateHelp">미입력시 현재 시간으로 설정됩니다</p>
                                     </div>
-                                    <button type="submit" class="w-full bg-indigo-600 text-white font-semibold py-3 px-4 rounded-lg hover:bg-indigo-700 transition-colors" data-i18n="addArticleButton">
+                                    <button type="submit" class="w-full btn-primary text-white font-semibold py-4 px-6 rounded-xl shadow-lg" data-i18n="addArticleButton">
                                         아티클 추가하기
                                     </button>
                                 </form>
@@ -181,11 +309,11 @@
                             <div id="bulk-add" class="p-8 hidden">
                                 <div class="space-y-6">
                                     <div>
-                                        <label for="jsonl-file" class="form-label" data-i18n="selectJsonlFile">JSONL 파일 선택</label>
+                                        <label for="jsonl-file" class="form-label block text-sm font-semibold text-gray-700 mb-2" data-i18n="selectJsonlFile">JSONL 파일 선택</label>
                                         <div class="mt-2">
                                             <input type="file" id="jsonl-file" accept=".jsonl,.json" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
                                         </div>
-                                        <p class="mt-2 text-sm text-slate-500">
+                                        <p class="mt-2 text-sm text-gray-500">
                                             <span data-i18n="jsonlFormat">각 줄은 다음 형식의 JSON 객체여야 합니다:</span><br>
                                             <code class="text-xs bg-slate-100 px-2 py-1 rounded">{"title": "제목", "content": "내용", "author": "작성자", "original_url": "URL", "created_date": "2023-12-25T15:30:00Z"}</code>
                                         </p>
@@ -235,8 +363,8 @@
     </div>
 
     <!-- 인증 모달 -->
-    <div id="auth-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+    <div id="auth-modal" class="fixed inset-0 auth-modal flex items-center justify-center z-50 hidden">
+        <div class="auth-card rounded-2xl shadow-2xl w-full max-w-md mx-4">
             <div class="p-6">
                 <div class="flex justify-between items-center mb-4">
                     <h2 id="auth-modal-title" class="text-xl font-semibold text-slate-800"></h2>
