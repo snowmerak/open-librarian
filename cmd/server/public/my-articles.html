@@ -214,25 +214,15 @@
         </div>
     </div>
 
-    <!-- 언어 선택기 푸터 -->
+    <!-- 푸터 (언어 설정은 메인 페이지에서만 가능) -->
     <footer class="bg-white border-t border-gray-200 py-6">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-center items-center space-x-4">
-                <label for="language-select" class="text-sm font-semibold text-gray-700" data-i18n="language">언어</label>
-                <select id="language-select" onchange="changeLanguage(this.value)" class="text-sm bg-white border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                    <option value="en">English</option>
-                    <option value="ko">한국어</option>
-                    <option value="zh">中文</option>
-                    <option value="ja">日本語</option>
-                    <option value="es">Español</option>
-                </select>
-                <select id="language-select-mobile" onchange="changeLanguage(this.value)" title="Select Language" class="md:hidden text-sm bg-white border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                    <option value="en">EN</option>
-                    <option value="ko">KO</option>
-                    <option value="zh">ZH</option>
-                    <option value="ja">JA</option>
-                    <option value="es">ES</option>
-                </select>
+            <div class="flex justify-center items-center">
+                <p class="text-sm text-gray-500">
+                    <span data-i18n="language">언어</span> 설정은 
+                    <a href="/public/index.html" class="text-indigo-600 hover:text-indigo-800 font-medium" data-i18n="home">홈</a>
+                    페이지에서 변경할 수 있습니다.
+                </p>
             </div>
         </div>
     </footer>
@@ -300,30 +290,6 @@
                     }
                 });
             }
-        });
-
-        // 언어 변경 함수 오버라이드
-        window.addEventListener('load', function() {
-            // changeLanguage 함수가 로드된 후에 오버라이드
-            setTimeout(function() {
-                if (typeof changeLanguage === 'function') {
-                    const originalChangeLanguage = window.changeLanguage;
-                    window.changeLanguage = async function(language) {
-                        try {
-                            await originalChangeLanguage(language);
-                            // 언어 변경 후 사용자 정보 다시 업데이트
-                            updateUserInfo();
-                        } catch (error) {
-                            console.error('Language change failed:', error);
-                            // fallback: localStorage만 사용
-                            currentLanguage = language;
-                            localStorage.setItem('librarian_language', language);
-                            updatePageLanguage();
-                            updateUserInfo();
-                        }
-                    };
-                }
-            }, 100);
         });
 
         // 인증 상태 확인
