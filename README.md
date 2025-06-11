@@ -314,20 +314,17 @@ open-librarian/
 # Build the application
 go build -o bin/open-librarian cmd/server/main.go
 
-# Run tests
-go test ./...
-
 # Run with development settings
 go run cmd/server/main.go
 ```
 
 ### Docker Development
 ```bash
-# Build custom image
-docker build -t open-librarian .
-
 # Run with docker-compose
-docker-compose up --build
+./scripts/setup-services.sh
+
+# Rebuild Server
+./scripts/rebuild-server.sh
 ```
 
 ## 🛡️ Security & Performance
