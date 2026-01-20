@@ -175,6 +175,7 @@ function initArticleForm() {
             uploadBtn.disabled = false;
         }
     });
+}
 
 
 // Function to handle single file upload (PDF, XLSX, DOCX, etc.)
