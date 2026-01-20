@@ -23,10 +23,16 @@ Open Librarian is a modern, AI-powered search platform that allows users to uplo
 - **Session Management**: Automatic token refresh and secure logout
 
 ### 📚 Article Management
-- **Bulk Upload**: JSONL file processing with real-time progress tracking
+- **Multi-format Support**: Support for PDF, DOCX, XLSX, TXT, and JSONL file processing
 - **Metadata Support**: Author information, creation dates, and source URLs
 - **Content Validation**: Real-time feedback during upload process
-- **Flexible Storage**: Support for various article formats and metadata
+- **Unified Upload**: Single interface for all file types
+
+### 💬 Interactive Chat
+- **Conversational Interface**: Chat-like experience for queries and answers
+- **Session History**: Access, load more, and manage past chat sessions
+- **Source Citations**: Detailed view of sources used for answers with modal support
+- **LLM Integration**: Enhanced query handling with OpenRouter and local tools
 
 ### 🌐 Multi-language Support
 - **Internationalization**: Complete i18n framework
@@ -404,6 +410,20 @@ docker run -d -p 8080:8080 --env-file .env open-librarian:latest
 - **Database Scaling**: Consider MongoDB replica sets for high availability
 - **Vector Database**: Qdrant clustering for large-scale deployments
 - **AI Processing**: Multiple Ollama instances for concurrent AI requests
+
+## 📅 Recent Updates
+
+### 2026-01-21
+- **API**: Migrated documentation to Scalar UI for better interactivity
+- **Upload**: Added unified file upload support for PDF, DOCX, XLSX, and TXT formats
+- **UI**: Improved accessibility (Aria labels) and visual enhancements (Glass effect)
+- **Fixes**: Resolved issues with article form initialization and search scoring
+
+### 2026-01-20
+- **Chat**: Implemented full chat interface with history and session management
+- **Search**: Added WebSocket streaming for real-time search results
+- **LLM**: Integrated OpenRouter and local tool support
+- **Infrastructure**: Added Docker tasks for server maintenance
 
 ## 🤝 Contributing
 
