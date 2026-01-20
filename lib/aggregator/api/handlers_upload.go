@@ -50,13 +50,20 @@ func (h *HTTPServer) UploadArticleHandler(w http.ResponseWriter, r *http.Request
 	req := &ArticleRequest{
 		Title:   doc.Title,
 		Content: doc.Content,
-		// Map metadata to author/date if available?
-		// e.g. req.Author = doc.Metadata["author"]
 	}
 
-	// If the user provided override title in form
+	// Override/Set metadata from form values
 	if title := r.FormValue("title"); title != "" {
 		req.Title = title
+	}
+	if author := r.FormValue("author"); author != "" {
+		req.Author = author
+	}
+	if originalURL := r.FormValue("original_url"); originalURL != "" {
+		req.OriginalURL = originalURL
+	}
+	if createdDate := r.FormValue("created_date"); createdDate != "" {
+		req.CreatedDate = createdDate
 	}
 
 	// Call AddArticle

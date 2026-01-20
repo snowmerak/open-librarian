@@ -268,72 +268,60 @@
                     <div class="max-w-2xl mx-auto space-y-8">
                         <!-- 탭 선택 -->
                         <div class="form-card rounded-2xl shadow-xl">
-                            <div class="flex border-b border-slate-200">
-                                <button onclick="showAddTab('single')" id="single-tab" class="flex-1 px-8 py-4 text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-purple-600 rounded-tl-2xl" data-i18n="singleArticle">
-                                    단일 아티클
-                                </button>
-                                <button onclick="showAddTab('bulk')" id="bulk-tab" class="flex-1 px-8 py-4 text-sm font-semibold text-gray-600 hover:text-gray-800 rounded-tr-2xl" data-i18n="bulkUpload">
-                                    대량 업로드 (JSONL)
-                                </button>
-                            </div>
-                            
-                            <!-- 단일 아티클 추가 -->
+                            <!-- 통합 아티클 추가 폼 -->
                             <div id="single-add" class="p-8">
                                 <form id="add-article-form" class="space-y-6">
                                     <div>
                                         <label for="title" class="form-label block text-sm font-semibold text-gray-700 mb-2" data-i18n="title">제목</label>
-                                        <input type="text" id="title" name="title" class="form-input w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all" data-i18n-placeholder="titlePlaceholder" placeholder="아티클의 제목을 입력하세요" required>
+                                        <input type="text" id="title" name="title" class="form-input w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all" data-i18n-placeholder="titlePlaceholder" placeholder="아티클의 제목을 입력하세요 (파일 업로드 시 자동 추출 시도)" required>
                                     </div>
-                                    <div>
-                                        <label for="content" class="form-label block text-sm font-semibold text-gray-700 mb-2" data-i18n="content">내용</label>
-                                        <textarea id="content" name="content" rows="12" class="form-input w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all" data-i18n-placeholder="contentPlaceholder" placeholder="아티클의 전체 내용을 붙여넣으세요" required></textarea>
+                                    
+                                    <div class="space-y-4">
+                                        <div>
+                                            <label for="content" class="form-label block text-sm font-semibold text-gray-700 mb-2" data-i18n="content">내용</label>
+                                            <textarea id="content" name="content" rows="10" 
+                                                class="form-input w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all" 
+                                                data-i18n-placeholder="contentPlaceholder" placeholder="아티클의 전체 내용을 붙여넣으세요"></textarea>
+                                        </div>
+
+                                        <div class="relative flex py-2 items-center">
+                                            <div class="flex-grow border-t border-gray-300"></div>
+                                            <span class="flex-shrink-0 mx-4 text-gray-400 text-sm" data-i18n="orUpload">또는 파일 업로드</span>
+                                            <div class="flex-grow border-t border-gray-300"></div>
+                                        </div>
+
+                                        <div>
+                                            <label for="jsonl-file" class="block text-sm font-semibold text-gray-700 mb-2" data-i18n="uploadFile">파일 선택</label>
+                                            <input type="file" id="jsonl-file" multiple accept=".jsonl,.json,.pdf,.xlsx,.docx,.md,.txt" 
+                                                class="block w-full text-sm text-slate-500
+                                                file:mr-4 file:py-3 file:px-6
+                                                file:rounded-xl file:border-0
+                                                file:text-sm file:font-semibold
+                                                file:bg-indigo-50 file:text-indigo-700
+                                                hover:file:bg-indigo-100
+                                                transition-all cursor-pointer">
+                                            <p class="mt-2 text-xs text-gray-500" data-i18n="fileFormatHelp">지원 형식: JSONL, PDF, Excel, Word, Markdown, Text</p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <label for="original_url" class="form-label block text-sm font-semibold text-gray-700 mb-2" data-i18n="originalUrl">원본 URL (선택)</label>
-                                        <input type="url" id="original_url" name="original_url" class="form-input w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all" data-i18n-placeholder="urlPlaceholder" placeholder="https://example.com/article">
+
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div>
+                                            <label for="original_url" class="form-label block text-sm font-semibold text-gray-700 mb-2" data-i18n="originalUrl">원본 URL (선택)</label>
+                                            <input type="url" id="original_url" name="original_url" class="form-input w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all" data-i18n-placeholder="urlPlaceholder" placeholder="https://example.com/article">
+                                        </div>
+                                        <div>
+                                            <label for="author" class="form-label block text-sm font-semibold text-gray-700 mb-2" data-i18n="author">작성자 (선택)</label>
+                                            <input type="text" id="author" name="author" class="form-input w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all" data-i18n-placeholder="authorPlaceholder" placeholder="홍길동">
+                                        </div>
                                     </div>
-                                    <div>
-                                        <label for="author" class="form-label block text-sm font-semibold text-gray-700 mb-2" data-i18n="author">작성자 (선택)</label>
-                                        <input type="text" id="author" name="author" class="form-input w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all" data-i18n-placeholder="authorPlaceholder" placeholder="홍길동">
-                                    </div>
+                                    
                                     <div>
                                         <label for="created_date" class="form-label block text-sm font-semibold text-gray-700 mb-2" data-i18n="createdDate">작성일 (선택)</label>
                                         <input type="datetime-local" id="created_date" name="created_date" class="form-input w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all" data-i18n-placeholder="createdDatePlaceholder">
-                                        <p class="mt-1 text-sm text-gray-500" data-i18n="createdDateHelp">미입력시 현재 시간으로 설정됩니다</p>
                                     </div>
-                                    <button type="submit" class="w-full btn-primary text-white font-semibold py-4 px-6 rounded-xl shadow-lg" data-i18n="addArticleButton">
-                                        아티클 추가하기
-                                    </button>
-                                </form>
-                            </div>
-                            
-                            <!-- JSONL 대량 업로드 -->
-                            <div id="bulk-add" class="p-8 hidden">
-                                <div class="space-y-6">
-                                    <div>
-                                        <label for="jsonl-file" class="form-label block text-sm font-semibold text-gray-700 mb-2" data-i18n="selectFile">파일 선택 (JSONL, PDF, Excel, Word, Markdown)</label>
-                                        <div class="mt-2">
-                                            <input type="file" id="jsonl-file" accept=".jsonl,.json,.pdf,.xlsx,.docx,.md,.txt" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
-                                        </div>
-                                        <p class="mt-2 text-sm text-gray-500">
-                                            <span data-i18n="fileFormatHelp">지원 형식: JSONL, PDF, Excel(.xlsx), Word(.docx), Markdown(.md)</span><br>
-                                            <code class="text-xs bg-slate-100 px-2 py-1 rounded">{"title": "...", "content": "..."}</code> (JSONL) 또는 문서를 직접 업로드하세요.
-                                        </p>
-                                    </div>
-                                    
-                                    <!-- 파일 미리보기 -->
-                                    <div id="file-preview" class="hidden">
-                                        <h4 class="font-medium text-slate-700 mb-2" data-i18n="filePreview">파일 미리보기</h4>
-                                        <div class="bg-slate-50 border border-slate-200 rounded-lg p-4 max-h-40 overflow-y-auto">
-                                            <pre id="preview-content" class="text-xs text-slate-600 whitespace-pre-wrap"></pre>
-                                        </div>
-                                        <div class="mt-2 text-sm text-slate-600">
-                                            총 <span id="total-lines" class="font-medium">0</span><span data-i18n="articlesFound">개의 아티클이 발견되었습니다</span>.
-                                        </div>
-                                    </div>
-                                    
-                                    <!-- 진행률 표시 -->
-                                    <div id="upload-progress" class="hidden">
+
+                                    <!-- 진행률 표시 (숨김) -->
+                                    <div id="upload-progress" class="hidden bg-slate-50 p-6 rounded-xl border border-slate-200">
                                         <div class="mb-4">
                                             <div class="flex justify-between text-sm text-slate-600 mb-2">
                                                 <span data-i18n="uploadProgress">업로드 진행률</span>
@@ -343,18 +331,14 @@
                                                 <div id="progress-bar" class="bg-indigo-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
                                             </div>
                                         </div>
-                                        <div id="current-item" class="text-sm text-slate-600 mb-4">
-                                            <!-- 현재 처리 중인 아이템 정보 -->
-                                        </div>
-                                        <div id="upload-log" class="bg-slate-50 border border-slate-200 rounded-lg p-4 max-h-40 overflow-y-auto">
-                                            <!-- 업로드 로그 -->
-                                        </div>
+                                        <div id="current-item" class="text-sm text-slate-600 mb-4 font-medium"></div>
+                                        <div id="upload-log" class="bg-white border border-slate-200 rounded-lg p-4 max-h-40 overflow-y-auto text-xs font-mono"></div>
                                     </div>
-                                    
-                                    <button onclick="handleBulkUpload()" id="bulk-upload-btn" class="w-full bg-indigo-600 text-white font-semibold py-3 px-4 rounded-lg hover:bg-indigo-700 transition-colors disabled:bg-slate-400 disabled:cursor-not-allowed" data-i18n="uploadFileButton" disabled>
-                                        파일 업로드
+
+                                    <button type="submit" class="w-full btn-primary text-white font-semibold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all" data-i18n="addArticleButton">
+                                        아티클 추가하기
                                     </button>
-                                </div>
+                                </form>
                             </div>
                         </div>
                     </div>

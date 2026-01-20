@@ -1,26 +1,6 @@
-// 탭 전환 함수
-function showAddTab(tab) {
-    const singleTab = document.getElementById('single-tab');
-    const bulkTab = document.getElementById('bulk-tab');
-    const singleAdd = document.getElementById('single-add');
-    const bulkAdd = document.getElementById('bulk-add');
-    
-    if (tab === 'single') {
-        singleTab.className = 'flex-1 px-6 py-3 text-sm font-medium text-indigo-600 border-b-2 border-indigo-600';
-        bulkTab.className = 'flex-1 px-6 py-3 text-sm font-medium text-slate-500 hover:text-slate-700';
-        singleAdd.classList.remove('hidden');
-        bulkAdd.classList.add('hidden');
-    } else {
-        singleTab.className = 'flex-1 px-6 py-3 text-sm font-medium text-slate-500 hover:text-slate-700';
-        bulkTab.className = 'flex-1 px-6 py-3 text-sm font-medium text-indigo-600 border-b-2 border-indigo-600';
-        singleAdd.classList.add('hidden');
-        bulkAdd.classList.remove('hidden');
-    }
-}
-
 // 아티클 추가 폼 이벤트 리스너 설정
 function initArticleForm() {
-    // 아티클 추가 폼 처리 - WebSocket을 이용한 실시간 진행률 표시
+    // 아티클 추가 폼 처리
     document.getElementById('add-article-form').addEventListener('submit', async function(e) {
         e.preventDefault();
         
@@ -39,248 +19,171 @@ function initArticleForm() {
 
         try {
             const formData = new FormData(e.target);
-            const articleData = {
+            const metadata = {
                 title: formData.get('title'),
-                content: formData.get('content'),
                 original_url: formData.get('original_url') || '',
                 author: formData.get('author') || ''
             };
-
+            
             // Handle created_date conversion from datetime-local to RFC3339
             const createdDateValue = formData.get('created_date');
             if (createdDateValue) {
-                // Convert from datetime-local format to RFC3339
                 const localDate = new Date(createdDateValue);
-                articleData.created_date = localDate.toISOString();
+                metadata.created_date = localDate.toISOString();
             }
 
-            // Try WebSocket first, fallback to regular HTTP if WebSocket fails
-            try {
-                await handleWebSocketArticleAddition(articleData, button, originalText);
-                e.target.reset();
-                showView('search-view'); // 추가 후 검색 화면으로 이동
-            } catch (wsError) {
-                console.warn('WebSocket article addition failed, falling back to HTTP:', wsError);
+            // Check if there are files in the queue
+            if (window.uploadQueue && window.uploadQueue.length > 0) {
+                 await handleUnifiedUpload(window.uploadQueue, metadata);
+                 e.target.reset();
+                 window.uploadQueue = []; // Clear queue
+                 
+                 // Show completion in the log
+                 const log = document.getElementById('upload-log');
+                 if(log) {
+                     const successMsg = document.createElement('div');
+                     successMsg.className = "text-green-600 font-bold mt-2 p-2 bg-green-50 rounded";
+                     successMsg.innerText = "All operations completed successfully.";
+                     log.appendChild(successMsg);
+                     log.scrollTop = log.scrollHeight;
+                 }
+                 
+                 // Optional: Delay and redirect? 
+                 // For now, let user see the log.
+            } else {
+                // No files, try Single Text Upload
+                const content = formData.get('content');
+                if (!content || !content.trim()) {
+                    alert(t('contentRequired') || "Content is required if no file is selected.");
+                    throw new Error("Missing content"); // Stop execution
+                }
+
+                // Normal Single Article Logic
+                const articleData = { ...metadata, content, title: metadata.title };
                 
-                // Fallback to regular HTTP request with JWT token
-                const token = getJWTToken();
-                const response = await fetch(`${API_BASE_URL}/api/v1/articles`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify(articleData)
-                });
+                // Try WebSocket first, fallback to regular HTTP if WebSocket fails
+                try {
+                    await handleWebSocketArticleAddition(articleData, button, originalText);
+                    e.target.reset();
+                    showView('search-view'); 
+                } catch (wsError) {
+                    console.warn('WebSocket article addition failed, falling back to HTTP:', wsError);
+                    
+                    // Fallback to regular HTTP request with JWT token
+                    const token = getJWTToken();
+                    const response = await fetch(`${API_BASE_URL}/api/v1/articles`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify(articleData)
+                    });
 
-                if (response.status === 401) {
-                    alert('인증이 만료되었습니다. 다시 로그인해주세요.');
-                    setJWTToken(null);
-                    showAuthModal('login');
-                    return;
+                    if (response.status === 401) {
+                        alert('인증이 만료되었습니다. 다시 로그인해주세요.');
+                        setJWTToken(null);
+                        showAuthModal('login');
+                        return;
+                    }
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    alert(t('articleAddedSuccess'));
+                    e.target.reset();
+                    showView('search-view'); // 추가 후 검색 화면으로 이동
                 }
-
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-
-                alert(t('articleAddedSuccess'));
-                e.target.reset();
-                showView('search-view'); // 추가 후 검색 화면으로 이동
             }
 
         } catch (error) {
             console.error('Article submission error:', error);
-            alert(t('articleAddError'));
+            if(error.message !== "Missing content") alert(t('articleAddError'));
         } finally {
             button.disabled = false;
             button.innerHTML = originalText;
         }
     });
 
-    // 파일 선택 처리 (JSONL 및 일반 문서)
-    document.getElementById('jsonl-file').addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        const uploadBtn = document.getElementById('bulk-upload-btn');
-        const preview = document.getElementById('file-preview');
-        const previewContent = document.getElementById('preview-content');
-        const totalLines = document.getElementById('total-lines');
-        
-        if (!file) {
-            uploadBtn.disabled = true;
-            preview.classList.add('hidden');
-            window.uploadFile = null;
-            window.jsonlData = null;
-            return;
-        }
+    // 파일 선택 처리
+    const jsonlFileInput = document.getElementById('jsonl-file');
+    if (jsonlFileInput) {
+        jsonlFileInput.addEventListener('change', async function(e) {
+            const files = Array.from(e.target.files);
+            
+            window.uploadQueue = [];
+            
+            if (files.length === 0) return;
 
-        const fileName = file.name.toLowerCase();
-        
-        // JSONL 파일 처리
-        if (fileName.endsWith('.jsonl') || fileName.endsWith('.json')) {
-            window.uploadFile = null; // Clear binary file
-            
-            const reader = new FileReader();
-            reader.onload = function(event) {
-                try {
-                    const content = event.target.result;
-                    const lines = content.trim().split('\n').filter(line => line.trim());
-                    
-                    // 각 줄이 유효한 JSON인지 확인
-                    const validLines = [];
-                    for (let i = 0; i < lines.length; i++) {
-                        try {
-                            const parsed = JSON.parse(lines[i]);
-                            if (parsed.title && parsed.content) {
-                                validLines.push(parsed);
-                            }
-                        } catch (parseError) {
-                            console.warn(`Line ${i + 1} is not valid JSON:`, lines[i]);
-                        }
-                    }
-                    
-                    if (validLines.length === 0) {
-                        alert(t('noValidArticles'));
-                        uploadBtn.disabled = true;
-                        return;
-                    }
-                    
-                    // 미리보기 표시
-                    previewContent.textContent = validLines.slice(0, 3).map(item => 
-                        JSON.stringify(item, null, 2)
-                    ).join('\n\n') + (validLines.length > 3 ? '\n\n...' : '');
-                    
-                    totalLines.textContent = validLines.length;
-                    preview.classList.remove('hidden');
-                    uploadBtn.disabled = false;
-                    
-                    // 파일 데이터를 전역 변수에 저장
-                    window.jsonlData = validLines;
-                    
-                } catch (error) {
-                    alert(t('fileReadError'));
-                    uploadBtn.disabled = true;
+            for (const file of files) {
+                const fileName = file.name.toLowerCase();
+                    // Just push to queue, parsing JSONL if needed
+                if (fileName.endsWith('.jsonl') || fileName.endsWith('.json')) {
+                     await new Promise((resolve) => {
+                        const reader = new FileReader();
+                        reader.onload = function(event) {
+                            try {
+                                const content = event.target.result;
+                                const lines = content.trim().split('\n').filter(line => line.trim());
+                                for (let i = 0; i < lines.length; i++) {
+                                     try {
+                                         const parsed = JSON.parse(lines[i]);
+                                         if (parsed.title && parsed.content) {
+                                             window.uploadQueue.push({ type: 'data', data: parsed, name: parsed.title });
+                                         }
+                                     } catch (parseError) {}
+                                }
+                            } catch (err) {}
+                            resolve();
+                        };
+                        reader.readAsText(file);
+                     });
+                } else {
+                     window.uploadQueue.push({ type: 'file', file: file, name: file.name });
                 }
-            };
-            reader.readAsText(file);
-        } 
-        // 일반 문서 파일 (PDF, DOCX, XLSX 등) 처리
-        else {
-            window.jsonlData = null; // Clear JSONL data
-            window.uploadFile = file;
+            }
             
-            previewContent.textContent = `File: ${file.name}\nSize: ${(file.size / 1024).toFixed(2)} KB\nType: ${file.type || 'Unknown'}`;
-            totalLines.textContent = "1 (Document Upload)";
-            preview.classList.remove('hidden');
-            uploadBtn.disabled = false;
-        }
-    });
+             // Auto-populate title if single file
+             const titleInput = document.getElementById('title');
+             if(titleInput && !titleInput.value && window.uploadQueue.length === 1) {
+                 titleInput.value = window.uploadQueue[0].name.replace(/\.[^/.]+$/, "");
+             }
+        });
+    }
 }
 
-
-// Function to handle single file upload (PDF, XLSX, DOCX, etc.)
-async function handleSingleFileUpload(file) {
-    const uploadBtn = document.getElementById('bulk-upload-btn');
-    const uploadLog = document.getElementById('upload-log');
-    const progressContainer = document.getElementById('upload-progress');
-    const currentItem = document.getElementById('current-item');
-    const totalProgress = document.getElementById('total-progress');
-    const currentProgress = document.getElementById('current-progress');
-    
-    // UI Init
-    const originalText = uploadBtn.innerHTML;
-    uploadBtn.disabled = true;
-    uploadBtn.innerHTML = `<div class="flex items-center justify-center"><div class="spinner mr-2"></div> ${t('uploading')}</div>`;
-    progressContainer.classList.remove('hidden');
-    uploadLog.innerHTML = '';
-    
-    // Reset progress counters for single file
-    totalProgress.textContent = "1";
-    currentProgress.textContent = "1";
-
-    currentItem.innerHTML = `
-        <div class="flex items-center">
-            <div class="spinner mr-2"></div>
-            <span>Uploading: <strong>${escapeHtml(file.name)}</strong></span>
-        </div>
-    `;
-
+// Function to upload a single file (returns Promise)
+async function uploadSingleFile(file, metadata = {}) {
     const formData = new FormData();
     formData.append('file', file);
+    
+    // Add metadata
+    if (metadata.author) formData.append('author', metadata.author);
+    if (metadata.original_url) formData.append('original_url', metadata.original_url);
+    if (metadata.created_date) formData.append('created_date', metadata.created_date);
 
     const token = getJWTToken();
-    if (!token) {
-        alert(t('loginRequired'));
-        return;
+    if (!token) throw new Error('Login Required');
+
+    const response = await fetch(`${API_BASE_URL}/api/v1/articles/upload`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData
+    });
+
+    if (!response.ok) {
+        let errMsg = `Status: ${response.status}`;
+        try { errMsg += ` - ${await response.text()}`; } catch (e) {}
+        throw new Error(errMsg);
     }
-
-    try {
-        const response = await fetch(`${API_BASE_URL}/api/v1/articles/upload`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`
-            },
-            body: formData
-        });
-
-        if (!response.ok) {
-            let errMsg = `Status: ${response.status}`;
-            try {
-                const errData = await response.text(); // Get text first in case it isn't JSON
-                errMsg += ` - ${errData}`;
-            } catch (e) {}
-            throw new Error(errMsg);
-        }
-
-        const result = await response.json();
-        
-        // Success
-        currentItem.innerHTML = `<span class="text-green-600 font-bold">Upload Complete!</span>`;
-        
-        const logEntry = document.createElement('div');
-        logEntry.className = 'text-sm text-green-600 mb-1';
-        logEntry.textContent = `✓ Successfully uploaded ${file.name}`;
-        uploadLog.appendChild(logEntry);
-        
-        alert(t('articleAddedSuccess'));
-
-    } catch (error) {
-        console.error('Upload Error:', error);
-        currentItem.innerHTML = `<span class="text-red-600 font-bold">Upload Failed</span>`;
-        
-        const logEntry = document.createElement('div');
-        logEntry.className = 'text-sm text-red-600 mb-1';
-        logEntry.textContent = `✗ Error: ${error.message}`;
-        uploadLog.appendChild(logEntry);
-        
-        alert(t('articleAddError'));
-    } finally {
-        uploadBtn.disabled = false;
-        uploadBtn.innerHTML = originalText;
-    }
+    return await response.json();
 }
 
-// 대량 업로드 처리 - 각 아티클을 개별 WebSocket으로 처리
-async function handleBulkUpload() {
-    // 로그인 상태 확인
-    if (!isLoggedIn()) {
-        alert('로그인이 필요합니다.');
-        showAuthModal('login');
-        return;
-    }
+// 대량 업로드 처리
+async function handleUnifiedUpload(queue, metadata) {
+    if (!queue || queue.length === 0) return;
     
-    // Check if we have a single binary file to upload
-    if (window.uploadFile) {
-        await handleSingleFileUpload(window.uploadFile);
-        return;
-    }
-
-    if (!window.jsonlData || window.jsonlData.length === 0) {
-        alert(t('noUploadData'));
-        return;
-    }
-    
-    const uploadBtn = document.getElementById('bulk-upload-btn');
     const progressContainer = document.getElementById('upload-progress');
     const progressBar = document.getElementById('progress-bar');
     const currentProgress = document.getElementById('current-progress');
@@ -288,107 +191,76 @@ async function handleBulkUpload() {
     const currentItem = document.getElementById('current-item');
     const uploadLog = document.getElementById('upload-log');
     
-    // UI 초기화
-    const originalText = uploadBtn.innerHTML;
-    uploadBtn.disabled = true;
-    uploadBtn.innerHTML = `<div class="flex items-center justify-center"><div class="spinner mr-2"></div> ${t('uploading')}</div>`;
-    progressContainer.classList.remove('hidden');
-    
-    const totalItems = window.jsonlData.length;
-    totalProgress.textContent = totalItems;
-    uploadLog.innerHTML = '';
+    // UI Init
+    if (progressContainer) progressContainer.classList.remove('hidden');
+    if (totalProgress) totalProgress.textContent = queue.length;
+    if (uploadLog) uploadLog.innerHTML = '';
     
     let successCount = 0;
     let errorCount = 0;
     
-    // 각 아티클을 개별 WebSocket으로 순차 처리
-    for (let i = 0; i < totalItems; i++) {
-        const article = window.jsonlData[i];
-        currentProgress.textContent = i + 1;
+    for (let i = 0; i < queue.length; i++) {
+        const item = queue[i];
+        if (currentProgress) currentProgress.textContent = i + 1;
         
-        // 아티클 데이터 준비
-        const articleData = {
-            title: article.title,
-            content: article.content,
-            original_url: article.original_url || '',
-            author: article.author || ''
-        };
+        const itemName = item.type === 'file' ? item.name : (item.name || 'Untitled');
+        if (currentItem) {
+            currentItem.innerHTML = `
+                <div class="flex items-center">
+                    <div class="spinner mr-2"></div>
+                    <span>Processing: <strong>${escapeHtml(itemName.substring(0, 50))}...</strong></span>
+                </div>
+            `;
+        }
         
-        // Handle created_date if provided
-        if (article.created_date) {
-            try {
-                const date = new Date(article.created_date);
-                if (!isNaN(date.getTime())) {
-                    articleData.created_date = date.toISOString();
+        try {
+            if (item.type === 'data') {
+                const articleData = {
+                    title: item.data.title || metadata.title || 'Untitled',
+                    content: item.data.content || '',
+                    original_url: item.data.original_url || metadata.original_url || '',
+                    author: item.data.author || metadata.author || ''
+                };
+                const d = item.data.created_date || metadata.created_date;
+                 if (d) {
+                    const date = new Date(d);
+                    if (!isNaN(date.getTime())) articleData.created_date = date.toISOString();
                 }
-            } catch (dateError) {
-                console.warn(`Invalid date format for article "${article.title}": ${article.created_date}`);
+                
+                await processIndividualArticleWithWebSocket(articleData, articleData.title);
+            } else if (item.type === 'file') {
+                await uploadSingleFile(item.file, metadata);
+            }
+
+            successCount++;
+            if (uploadLog) {
+                const div = document.createElement('div');
+                div.className = 'text-sm text-green-600 mb-1';
+                div.innerHTML = `✓ ${escapeHtml(itemName.substring(0, 60))}`;
+                uploadLog.appendChild(div);
+            }
+        } catch (error) {
+            errorCount++;
+            console.error(`Failed to upload ${itemName}`, error);
+            if (uploadLog) {
+                const div = document.createElement('div');
+                div.className = 'text-sm text-red-600 mb-1';
+                div.innerHTML = `✗ ${escapeHtml(itemName.substring(0, 60))} (Error: ${error.message})`;
+                uploadLog.appendChild(div);
             }
         }
         
-        // 현재 처리 중인 아티클 표시
-        currentItem.innerHTML = `
-            <div class="flex items-center">
-                <div class="spinner mr-2"></div>
-                <span>처리 중: <strong>${escapeHtml(article.title.substring(0, 50))}...</strong></span>
-            </div>
-        `;
-        
-        try {
-            // 개별 아티클에 대해 WebSocket 요청 (폴백 포함)
-            await processIndividualArticleWithWebSocket(articleData, article.title);
-            
-            successCount++;
-            
-            // 성공 로그 추가
-            const logEntry = document.createElement('div');
-            logEntry.className = 'text-sm text-green-600 mb-1';
-            logEntry.innerHTML = `✓ ${escapeHtml(article.title.substring(0, 60))}${article.title.length > 60 ? '...' : ''}`;
-            uploadLog.appendChild(logEntry);
-            
-        } catch (error) {
-            errorCount++;
-            console.error(`Failed to upload article: ${article.title}`, error);
-            
-            // 실패 로그 추가
-            const logEntry = document.createElement('div');
-            logEntry.className = 'text-sm text-red-600 mb-1';
-            logEntry.innerHTML = `✗ ${escapeHtml(article.title.substring(0, 60))}${article.title.length > 60 ? '...' : ''} (오류: ${error.message})`;
-            uploadLog.appendChild(logEntry);
-        }
-        
-        // 전체 진행률 업데이트
-        const progress = ((i + 1) / totalItems) * 100;
-        progressBar.style.width = `${progress}%`;
-        
-        // 로그 스크롤을 하단으로
-        uploadLog.scrollTop = uploadLog.scrollHeight;
-        
-        // 각 요청 사이에 짧은 지연 추가 (서버 부하 방지)
-        await new Promise(resolve => setTimeout(resolve, 500));
+        if (progressBar) progressBar.style.width = `${((i + 1) / queue.length) * 100}%`;
+        if (uploadLog) uploadLog.scrollTop = uploadLog.scrollHeight;
+        if (item.type === 'data') await new Promise(r => setTimeout(r, 300));
     }
     
-    // 완료 처리
-    currentItem.innerHTML = `
-        <div class="text-green-600 font-medium">
-            ${t('uploadComplete', { success: successCount, failed: errorCount })}
-        </div>
-    `;
-    
-    uploadBtn.disabled = false;
-    uploadBtn.innerHTML = originalText;
-    
-    if (successCount > 0) {
-        // 성공적으로 업로드된 아티클이 있으면 검색 화면으로 이동 제안
-        if (confirm(`${successCount}${t('moveToSearch')}`)) {
-            showView('search-view');
-        }
+    if (currentItem) {
+        currentItem.innerHTML = `<div class="text-green-600 font-medium">${t('uploadComplete', { success: successCount, failed: errorCount })}</div>`;
     }
     
-    // 파일 입력 초기화
-    document.getElementById('jsonl-file').value = '';
-    document.getElementById('file-preview').classList.add('hidden');
-    window.jsonlData = null;
+    const fileInput = document.getElementById('jsonl-file');
+    if (fileInput) fileInput.value = '';
 }
 
 // 개별 아티클에 대한 WebSocket 처리 (실시간 진행률 표시 포함)
