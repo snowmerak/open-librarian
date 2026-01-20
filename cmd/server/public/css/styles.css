@@ -301,3 +301,145 @@ body {
 .markdown-content em {
     font-style: italic;
 }
+
+/* Chat Interface Styles */
+.user-bubble {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 20px 20px 0 20px;
+    padding: 1rem 1.5rem;
+    max-width: 80%;
+    margin-left: auto;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    line-height: 1.6;
+    word-wrap: break-word; /* Ensure long words check */
+}
+
+.ai-bubble-container {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    max-width: 90%;
+}
+
+.ai-bubble {
+    background-color: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 20px 20px 20px 0;
+    padding: 1.5rem;
+    width: 100%;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    line-height: 1.6;
+}
+
+.ai-avatar {
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #4f46e5 0%, #a855f7 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    flex-shrink: 0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.markdown-content h1, .markdown-content h2, .markdown-content h3 {
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
+    font-weight: 700;
+    color: #1e293b;
+}
+.markdown-content h1 { font-size: 1.5em; }
+.markdown-content h2 { font-size: 1.25em; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem; }
+.markdown-content h3 { font-size: 1.1em; }
+
+.markdown-content p {
+    margin-bottom: 1rem;
+}
+
+.markdown-content ul {
+    list-style-type: disc;
+    padding-left: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.markdown-content ol {
+    list-style-type: decimal;
+    padding-left: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.markdown-content pre {
+    background-color: #f1f5f9;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    overflow-x: auto;
+    margin-bottom: 1rem;
+    border: 1px solid #e2e8f0;
+}
+
+.markdown-content code {
+    font-family: monospace;
+    background-color: #f1f5f9;
+    padding: 0.2rem 0.4rem;
+    border-radius: 0.25rem;
+    color: #ef4444;
+    font-size: 0.9em;
+}
+
+.markdown-content pre code {
+    background-color: transparent;
+    color: #334155;
+    padding: 0;
+    color: #1e293b;
+}
+
+.markdown-content a {
+    color: #4f46e5;
+    text-decoration: underline;
+}
+
+.source-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.75rem;
+    background-color: #f8fafc;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    color: #475569;
+    margin-right: 0.5rem;
+    margin-bottom: 0.5rem;
+    transition: all 0.2s;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.source-chip:hover {
+    background-color: #e2e8f0;
+    color: #1e293b;
+    border-color: #94a3b8;
+}
+
+.thinking-dots {
+    display: flex;
+    gap: 4px;
+    padding: 10px 0;
+}
+.thinking-dot {
+    width: 8px;
+    height: 8px;
+    background-color: #94a3b8;
+    border-radius: 50%;
+    animation: thinking 1.4s infinite ease-in-out both;
+}
+.thinking-dot:nth-child(1) { animation-delay: -0.32s; }
+.thinking-dot:nth-child(2) { animation-delay: -0.16s; }
+
+@keyframes thinking {
+    0%, 80%, 100% { transform: scale(0); }
+    40% { transform: scale(1); }
+}
+

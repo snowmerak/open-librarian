@@ -229,30 +229,32 @@
         <main class="flex-1 flex flex-col h-screen">
             
             <!-- 1. 통합 검색 화면 -->
-            <div id="search-view" class="view flex flex-col h-full">
-                <!-- 검색바를 상단에 고정 -->
-                <header class="search-container p-8">
-                    <div class="max-w-4xl mx-auto text-center">
-                        <h1 class="text-4xl md:text-5xl font-bold text-white mb-4">Open Librarian</h1>
-                        <p class="text-xl text-white opacity-90 mb-8">지식을 검색하고 공유하는 스마트한 방법</p>
-                        <div class="relative max-w-2xl mx-auto">
-                            <input id="search-input" type="text" data-i18n-placeholder="searchPlaceholder" placeholder="궁금한 내용을 자유롭게 질문하세요..." class="search-input w-full pl-6 pr-16 py-4 text-lg rounded-2xl focus:outline-none focus:ring-4 focus:ring-white focus:ring-opacity-30">
-                            <button onclick="handleSearch()" class="search-btn absolute right-2 top-1/2 -translate-y-1/2 p-3 text-white rounded-xl font-medium shadow-lg" title="Search">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <div id="search-view" class="view flex flex-col h-full relative">
+                <!-- 채팅 히스토리 영역 -->
+                <div id="chat-container" class="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 pb-24 scroll-smooth">
+                    <div id="welcome-message" class="text-center py-20">
+                        <div class="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg transform rotate-3">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-white"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+                        </div>
+                        <h3 class="text-3xl font-bold text-slate-800 mb-3" data-i18n="searchWelcomeTitle">무엇이든 물어보세요</h3>
+                        <p class="text-slate-500 text-lg max-w-md mx-auto" data-i18n="searchWelcomeDesc">AI 사서가 저장된 지식 아티클을 분석하여 답변해 드립니다.</p>
+                    </div>
+                    <!-- 메시지들이 여기에 추가됩니다 -->
+                </div>
+
+                <!-- 하단 고정 입력창 -->
+                <div class="absolute bottom-0 left-0 right-0 p-4 md:p-6 bg-white/90 backdrop-blur-md border-t border-slate-200">
+                    <div class="max-w-4xl mx-auto relative group">
+                        <div class="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl blur opacity-25 group-hover:opacity-40 transition duration-200"></div>
+                        <div class="relative flex items-center bg-white rounded-xl shadow-sm border border-slate-200">
+                            <input id="search-input" type="text" data-i18n-placeholder="searchPlaceholder" placeholder="궁금한 내용을 입력하세요..." class="w-full pl-6 pr-16 py-4 text-lg bg-transparent rounded-xl focus:outline-none" onkeydown="if(event.key === 'Enter') handleSearch()">
+                            <button onclick="handleSearch()" class="absolute right-2 p-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-md">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                             </button>
                         </div>
-                    </div>
-                </header>
-                
-                <!-- 검색 결과 영역 -->
-                <div id="search-results" class="flex-1 p-6 overflow-y-auto">
-                    <div class="max-w-4xl mx-auto">
-                        <div id="welcome-message" class="text-center py-20">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="mx-auto mb-6 text-indigo-400"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                            <h3 class="text-2xl font-bold text-gray-800 mb-3" data-i18n="searchWelcomeTitle">지식을 검색해보세요</h3>
-                            <p class="text-gray-600 text-lg" data-i18n="searchWelcomeDesc">저장된 아티클들을 바탕으로 정확한 답변을 제공합니다.</p>
+                        <div class="text-center mt-2">
+                             <p class="text-xs text-slate-400">Open Librarian AI can make mistakes. Consider checking important information.</p>
                         </div>
-                        <!-- 검색 결과가 여기에 표시됩니다 -->
                     </div>
                 </div>
             </div>

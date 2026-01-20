@@ -1,0 +1,18 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+
+version: '3'
+
+tasks:
+  docker:up:
+    desc: "Start the Docker containers"
+    cmds:
+      - docker-compose up -d
+  docker:down:
+    desc: "Stop the Docker containers"
+    cmds:
+      - docker-compose down
+  docker:logs:
+    desc: "View the Docker container logs"
+    cmds:
+      - docker-compose logs -f
+
