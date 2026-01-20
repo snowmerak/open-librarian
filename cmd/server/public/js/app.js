@@ -5,18 +5,16 @@ const API_BASE_URL = window.location.hostname === 'localhost' ?
 // 페이지 로드 시 초기화
 document.addEventListener('DOMContentLoaded', async function() {
     try {
-        await initDB();
-        await initLanguage(); // 언어 초기화 추가
+        await initLanguage(); // 언어 초기화
+        
+        // IndexedDB 로직 제거: 서버 사이드 관리로 전환됨
+        // await initDB();
+        
         await loadSearchHistory();
         initEventListeners();
         initArticleForm();
     } catch (error) {
-        console.error('Failed to initialize database:', error);
-        // Fallback to localStorage if IndexedDB fails
-        await initLanguage();
-        loadSearchHistoryFromLocalStorage();
-        initEventListeners();
-        initArticleForm();
+        console.error('Failed to initialize app:', error);
     }
 });
 
