@@ -167,7 +167,7 @@ async function clearSearchHistory() {
         console.error('Failed to clear search history:', error);
     }
     */
-}
+    alert("Not supported yet");
 }
 
 // HTML 이스케이프 함수
