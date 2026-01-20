@@ -91,7 +91,7 @@ func (c *Client) GetChatSession(ctx context.Context, id string) (*ChatSession, e
 // GetChatSessions retrieves chat sessions for a user (or all if userID is empty, though usually we want user specific)
 // For now, if userID is empty, we return all (admin view?) or maybe just anonymous ones?
 // For this app, let's treat everyone as anonymous users if they have no ID, or filter by a specific "anonymous" ID if passed.
-func (c *Client) GetChatSessions(ctx context.Context, userID string, limit int64) ([]ChatSession, error) {
+func (c *Client) GetChatSessions(ctx context.Context, userID string, limit, skip int64) ([]ChatSession, error) {
 	collection := c.client.Database(DatabaseName).Collection(ChatCollection)
 
 	filter := bson.M{}
@@ -104,12 +104,15 @@ func (c *Client) GetChatSessions(ctx context.Context, userID string, limit int64
 		// Let's rely on the frontend passing a user ID or token if persistent.
 		// If not, maybe we just return empty list?
 		// Wait, the current implementation has `user-articles.js` which implies some user concept.
-		// If `userID` is empty, let's return recent 20 sessions for everyone (local dev mode).
+		// If `userID` is empty, let's return recent sessions for everyone (local dev mode).
 	}
 
 	opts := options.Find().SetSort(bson.M{"updated_at": -1})
 	if limit > 0 {
 		opts.SetLimit(limit)
+	}
+	if skip > 0 {
+		opts.SetSkip(skip)
 	}
 
 	cursor, err := collection.Find(ctx, filter, opts)

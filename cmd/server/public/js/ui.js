@@ -11,41 +11,75 @@ function showView(viewId) {
     document.querySelector(`[onclick="showView('${viewId}')"]`).classList.add('active');
 }
 
+let currentHistoryPage = 1;
+const historyPageSize = 20;
+
 // 검색 히스토리 UI 업데이트
-async function updateHistoryDisplay() {
+async function updateHistoryDisplay(append = false) {
     const historyContainer = document.getElementById('search-history');
     
+    if (!append) {
+        currentHistoryPage = 1;
+    }
+
     try {
-        const response = await fetch('/api/v1/chat/history');
+        const response = await fetch(`/api/v1/chat/history?page=${currentHistoryPage}&size=${historyPageSize}`);
         if (!response.ok) throw new Error('Failed to fetch history');
         const history = await response.json();
         
-        if (!history || history.length === 0) {
-            historyContainer.innerHTML = `<div class="text-xs text-slate-400 hidden md:block">${t('noSearchHistory') || '기록 없음'}</div>`;
+        // Remove existing "Load More" button if it exists
+        const loadMoreBtn = document.getElementById('history-load-more');
+        if (loadMoreBtn) loadMoreBtn.remove();
+
+        if ((!history || history.length === 0) && !append) {
+            historyContainer.innerHTML = `<div class="text-xs text-slate-400 hidden md:block text-center p-4">${t('noSearchHistory') || '기록 없음'}</div>`;
             return;
         }
 
-        historyContainer.innerHTML = history.map(item => {
+        if (history.length === 0 && append) {
+            return;
+        }
+
+        const html = history.map(item => {
             const timeAgo = getTimeAgo(item.updated_at);
             const title = item.title || "New Chat";
-            // item.id should be the hex string from Mongo
             const onclickFunc = `loadChatSession('${item.id}')`;
             
             return `
-                <div class="history-item hidden md:block group" title="${escapeHtml(title)} (${timeAgo})">
+                <div class="history-item hidden md:block group relative hover:bg-slate-100 rounded-md transition-colors" title="${escapeHtml(title)} (${timeAgo})">
                     <div class="history-text cursor-pointer p-2" onclick="${onclickFunc}">
-                        <div class="text-sm text-slate-700 truncate">${escapeHtml(title)}</div>
-                        <div class="text-xs text-slate-400 mt-1">${timeAgo}</div>
+                        <div class="text-sm text-slate-700 truncate font-medium">${escapeHtml(title)}</div>
+                        <div class="text-xs text-slate-400 mt-0.5">${timeAgo}</div>
                     </div>
-                    <button class="delete-btn opacity-0 group-hover:opacity-100 transition-opacity absolute right-2 top-2 text-slate-400 hover:text-red-500" onclick="deleteChatSession(event, '${item.id}')" title="삭제">
+                    <button class="delete-btn opacity-0 group-hover:opacity-100 transition-opacity absolute right-2 top-2 text-slate-400 hover:text-red-500 p-1 hover:bg-slate-200 rounded" onclick="deleteChatSession(event, '${item.id}')" title="삭제">
                         ×
                     </button>
                 </div>
             `;
         }).join('');
+
+        if (append) {
+            historyContainer.insertAdjacentHTML('beforeend', html);
+        } else {
+            historyContainer.innerHTML = html;
+        }
+
+        // Add Load More button if we received a full page
+        if (history.length === historyPageSize) {
+             const moreBtn = document.createElement('button');
+             moreBtn.id = 'history-load-more';
+             moreBtn.className = 'w-full text-xs text-slate-500 hover:text-slate-700 py-2 mt-2 border-t border-slate-200 hidden md:block transition-colors';
+             moreBtn.innerText = t('loadMore') || '더 보기';
+             moreBtn.onclick = () => {
+                 currentHistoryPage++;
+                 updateHistoryDisplay(true);
+             };
+             historyContainer.appendChild(moreBtn);
+        }
+
     } catch (e) {
         console.error("History load error:", e);
-        historyContainer.innerHTML = `<div class="text-xs text-red-400 hidden md:block">Load Error</div>`;
+        if (!append) historyContainer.innerHTML = `<div class="text-xs text-red-400 hidden md:block text-center p-4">Load Error</div>`;
     }
 }
 

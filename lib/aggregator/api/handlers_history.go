@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/snowmerak/open-librarian/lib/client/mongo"
@@ -15,10 +16,26 @@ func (h *HTTPServer) GetChatHistoryHandler(w http.ResponseWriter, r *http.Reques
 	log := logger.NewLoggerWithContext(ctx, "get_chat_history").Start()
 	defer log.End()
 
+	pageStr := r.URL.Query().Get("page")
+	sizeStr := r.URL.Query().Get("size")
+
+	page := 1
+	if p, err := strconv.Atoi(pageStr); err == nil && p > 0 {
+		page = p
+	}
+
+	size := 20
+	if s, err := strconv.Atoi(sizeStr); err == nil && s > 0 {
+		size = s
+	}
+
+	limit := int64(size)
+	skip := int64((page - 1) * size)
+
 	// TODO: Replace with real user ID from context once auth is enforced
 	userID := ""
 
-	sessions, err := h.server.mongoClient.GetChatSessions(ctx, userID, 50)
+	sessions, err := h.server.mongoClient.GetChatSessions(ctx, userID, limit, skip)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get chat sessions")
 		http.Error(w, "Failed to get history", http.StatusInternalServerError)
