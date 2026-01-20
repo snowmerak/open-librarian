@@ -3,6 +3,7 @@
 // Global counter for generating unique IDs
 let messageIdCounter = 0;
 let currentSessionId = null;
+const sourceDataCache = new Map(); // Store source data for modal
 
 // 메인 검색 함수 (WebSocket 스트리밍)
 async function handleStreamSearch() {
@@ -141,11 +142,13 @@ function renderStaticAiMessage(content, sources) {
     let sourcesHtml = '';
     if (sources && sources.length > 0) {
         sources.forEach((source, index) => {
-             // 소스 구조가 유동적일 수 있으므로 체크 (DB 저장 구조 vs 실시간 구조)
-             // DB Saved: source might be simpler or same
              const title = source.article ? source.article.title : (source.Title || "Source");
+             // Generate ID for cache
+             const sourceId = `src-${id}-${index}`;
+             sourceDataCache.set(sourceId, source);
+
              sourcesHtml += `
-                <div class="source-chip" title="${escapeHtml(title)}">
+                <div class="source-chip cursor-pointer hover:bg-slate-200 transition-colors" onclick="openSourceModal('${sourceId}')" title="${escapeHtml(title)}">
                     <span class="font-semibold mr-1">${index + 1}.</span>
                     <span class="truncate max-w-[150px]">${escapeHtml(title)}</span>
                 </div>
@@ -264,10 +267,15 @@ function updateAiSources(elementId, sources) {
     
     let html = '';
     sources.forEach((source, index) => {
+        const title = source.article ? source.article.title : (source.Title || "Source");
+        // Use elementId as base for unique key
+        const sourceId = `live-${elementId}-${index}`;
+        sourceDataCache.set(sourceId, source);
+
         html += `
-            <div class="source-chip" title="${escapeHtml(source.article.title)}">
+            <div class="source-chip cursor-pointer hover:bg-slate-200 transition-colors" onclick="openSourceModal('${sourceId}')" title="${escapeHtml(title)}">
                 <span class="font-semibold mr-1">${index + 1}.</span>
-                <span class="truncate max-w-[150px]">${escapeHtml(source.article.title)}</span>
+                <span class="truncate max-w-[150px]">${escapeHtml(title)}</span>
             </div>
         `;
     });
@@ -313,7 +321,58 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
+// Modal Functions
+function openSourceModal(sourceId) {
+    const source = sourceDataCache.get(sourceId);
+    if (!source) return;
+
+    const modal = document.getElementById('source-modal');
+    const titleEl = document.getElementById('source-modal-title');
+    const summaryEl = document.getElementById('source-modal-summary');
+    const scoreEl = document.getElementById('source-modal-score');
+    const authorEl = document.getElementById('source-modal-author');
+    const dateEl = document.getElementById('source-modal-date');
+    const linkEl = document.getElementById('source-modal-link');
+
+    const article = source.article || source; // Handle structure differences if any
+
+    titleEl.textContent = article.title || "No Title";
+    // Check if summary exists, some implementation might not have it.
+    summaryEl.textContent = article.summary || article.content?.substring(0, 500) + "..." || "No Summary";
+    
+    // Score handling
+    const score = source.score ? Math.round(source.score * 100) / 100 : 0; // Fix floating point
+    scoreEl.textContent = score;
+
+    authorEl.textContent = article.author || "Unknown";
+    dateEl.textContent = article.created_date || article.createddate || "Unknown"; // Check casing
+    
+    if (article.original_url || article.originalurl) {
+        linkEl.href = article.original_url || article.originalurl;
+        linkEl.classList.remove('hidden');
+    } else {
+        linkEl.href = '#';
+        linkEl.classList.add('hidden');
+    }
+
+    modal.classList.remove('hidden');
+}
+
+function closeSourceModal() {
+    const modal = document.getElementById('source-modal');
+    modal.classList.add('hidden');
+}
+
+// Close modal when clicking outside
+document.getElementById('source-modal')?.addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeSourceModal();
+    }
+});
+
 // 전역 함수로 노출
+window.openSourceModal = openSourceModal;
+window.closeSourceModal = closeSourceModal;
 window.handleSearch = handleStreamSearch;
 window.searchFromHistory = null; // Will be defined in ui.js properly or handled via loadChatSession
 window.setCurrentSession = setCurrentSession;

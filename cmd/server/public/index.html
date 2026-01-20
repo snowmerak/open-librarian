@@ -444,6 +444,42 @@
         </div>
     </div>
 
+    <!-- Source Detail Modal -->
+    <div id="source-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 backdrop-blur-sm transition-all duration-300">
+        <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[80vh] flex flex-col overflow-hidden transform scale-100 transition-transform duration-300">
+            <div class="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+                <h3 id="source-modal-title" class="text-lg font-semibold text-slate-800 truncate pr-4">Source Title</h3>
+                <button onclick="closeSourceModal()" class="text-slate-400 hover:text-slate-600 transition-colors p-1 rounded-full hover:bg-slate-200">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+            </div>
+            <div class="p-6 overflow-y-auto">
+                <div class="mb-6">
+                     <div class="flex items-center gap-2 mb-3">
+                        <span class="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded border border-indigo-100">MATCH SCORE: <span id="source-modal-score">0</span>%</span>
+                     </div>
+                     <p id="source-modal-summary" class="text-slate-700 text-sm leading-relaxed whitespace-pre-wrap bg-slate-50 p-4 rounded-lg border border-slate-100"></p>
+                </div>
+                <div class="grid grid-cols-2 gap-4 text-sm border-t border-slate-100 pt-4">
+                    <div>
+                        <span class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wider">Author</span>
+                        <span id="source-modal-author" class="text-slate-800 font-medium">-</span>
+                    </div>
+                    <div>
+                        <span class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wider">Date</span>
+                        <span id="source-modal-date" class="text-slate-800 font-medium">-</span>
+                    </div>
+                </div>
+                 <div class="mt-6 pt-4 border-t border-slate-100 flex justify-end">
+                    <a id="source-modal-link" href="#" target="_blank" class="text-white bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-lg text-sm font-medium flex items-center shadow-sm transition-colors">
+                        View Original Source
+                        <svg class="ml-2 w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- JavaScript 파일들 -->
     <script src="js/i18n.js?v=2"></script>
     <script src="js/database.js?v=2"></script>
