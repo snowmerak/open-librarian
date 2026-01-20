@@ -38,7 +38,7 @@ Open Librarian is a modern, AI-powered search platform that allows users to uplo
 - **External Integrations**: Read-only APIs for external systems and agents
 - **Rate Limiting**: Built-in protection against abuse
 - **Public Endpoints**: No authentication required for read operations
-- **Developer Friendly**: Comprehensive API documentation
+- **Developer Friendly**: Interactive API documentation powered by Scalar UI (`/swagger/`)
 
 ## 🏗 Architecture
 
@@ -66,6 +66,7 @@ Open Librarian follows a modern three-tier architecture designed for scalability
 | **Search Engine** | OpenSearch | Full-text search and keyword matching |
 | **Vector Database** | Qdrant | Semantic similarity search and embeddings |
 | **AI Integration** | Ollama | Local LLM inference for answer generation |
+| **Documentation** | Scalar + OpenAPI 3.0 | Interactive API Reference and examples |
 | **Real-time** | WebSocket | Live updates and streaming responses |
 | **Containerization** | Docker + Docker Compose | Easy deployment and service orchestration |
 
