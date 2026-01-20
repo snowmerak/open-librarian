@@ -8,8 +8,6 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/snowmerak/open-librarian/lib/client/opensearch"
-	"github.com/snowmerak/open-librarian/lib/client/qdrant"
 	"github.com/snowmerak/open-librarian/lib/util/logger"
 )
 
@@ -61,133 +59,31 @@ func (h *HTTPServer) WebSocketSearchHandler(w http.ResponseWriter, r *http.Reque
 		// 검색 시작 알림
 		conn.WriteJSON(WSMessage{
 			Type: "status",
-			Data: "검색을 시작합니다...",
+			Data: "AI 에이전트가 답변을 생성하고 있습니다...",
 		})
 
-		// 1. 언어 감지
-		queryLang := h.server.languageDetector.DetectLanguage(req.Query)
-		searchLog.Info().Str("detected_language", queryLang).Msg("Language detected")
-
-		// 2. 쿼리 임베딩 생성
-		queryEmbedding, err := h.server.llmClient.GenerateEmbedding(ctx, "query: "+req.Query)
+		// AI 검색 수행 (Agentic Search)
+		resp, err := h.server.Search(ctx, &req)
 		if err != nil {
-			searchLog.Error().Err(err).Msg("Failed to generate query embedding")
+			searchLog.Error().Err(err).Msg("Search failed")
 			conn.WriteJSON(WSMessage{
 				Type: "error",
-				Data: fmt.Sprintf("Failed to generate query embedding: %v", err),
+				Data: fmt.Sprintf("Search failed: %v", err),
 			})
 			continue
 		}
-
-		conn.WriteJSON(WSMessage{
-			Type: "status",
-			Data: "검색 중...",
-		})
-
-		// 3. 기본 크기 설정
-		size := req.Size
-		if size == 0 {
-			size = 5
-		}
-
-		// 4. 병렬 검색 수행
-		// 4a. Qdrant 벡터 검색
-		allVectorResults, err := h.server.qdrantClient.VectorSearch(ctx, queryEmbedding, uint64(size*4), queryLang)
-		if err != nil {
-			searchLog.Error().Err(err).Msg("Vector search failed")
-			allVectorResults = []qdrant.VectorSearchResult{}
-		}
-
-		// 제목과 요약 결과 분리
-		var titleVectorResults, summaryVectorResults []qdrant.VectorSearchResult
-		for _, result := range allVectorResults {
-			if len(result.ID) > 6 && result.ID[len(result.ID)-6:] == "_title" {
-				titleVectorResults = append(titleVectorResults, result)
-			} else if len(result.ID) > 8 && result.ID[len(result.ID)-8:] == "_summary" {
-				summaryVectorResults = append(summaryVectorResults, result)
-			}
-		}
-
-		// 벡터 결과 결합 및 중복 제거
-		combinedVectorResults := h.server.combineVectorResults(titleVectorResults, summaryVectorResults, size*2)
-
-		// 4b. OpenSearch 키워드 검색
-		keywordResp, err := h.server.opensearchClient.KeywordSearch(ctx, req.Query, queryLang, size*2, req.From)
-		if err != nil {
-			searchLog.Error().Err(err).Msg("Keyword search failed")
-			keywordResp = &opensearch.SearchResponse{Results: []opensearch.SearchResult{}}
-		}
-
-		// 5. 벡터 검색 결과에서 아티클 ID 추출
-		var vectorArticleIDs []string
-		uniqueIDs := make(map[string]bool)
-		for _, result := range combinedVectorResults {
-			articleID := h.server.extractArticleID(result.ID)
-			if !uniqueIDs[articleID] {
-				vectorArticleIDs = append(vectorArticleIDs, articleID)
-				uniqueIDs[articleID] = true
-			}
-		}
-
-		var vectorArticles []opensearch.Article
-		if len(vectorArticleIDs) > 0 {
-			vectorArticles, err = h.server.opensearchClient.GetArticlesByIDs(ctx, vectorArticleIDs)
-			if err != nil {
-				searchLog.Error().Err(err).Msg("Failed to get articles by IDs")
-				vectorArticles = []opensearch.Article{}
-			}
-		}
-
-		// 6. 검색 결과 결합 및 중복 제거
-		combinedResults := h.server.combineSearchResults(combinedVectorResults, vectorArticles, keywordResp.Results, size)
-
-		// 6.5. LLM을 사용한 검색 관련성 검증
-		filteredResults, err := h.server.validateSearchRelevance(ctx, req.Query, combinedResults)
-		if err != nil {
-			searchLog.Error().Err(err).Msg("Failed to validate search relevance")
-			// 검증 실패 시 원본 결과 사용
-			filteredResults = combinedResults
-		}
-
-		searchLog.Info().
-			Int("total_results", len(filteredResults)).
-			Int("vector_results", len(combinedVectorResults)).
-			Int("keyword_results", len(keywordResp.Results)).
-			Msg("Search results combined")
 
 		// 참조 소스 전송
 		conn.WriteJSON(WSMessage{
 			Type: "sources",
-			Data: filteredResults,
+			Data: resp.Sources,
 		})
 
-		// 7. AI 답변 생성을 위한 아티클 추출
-		articles := make([]opensearch.Article, len(filteredResults))
-		for i, result := range filteredResults {
-			articles[i] = result.Article
-		}
-
+		// 답변 전송 (전체 답변을 한번에 전송)
 		conn.WriteJSON(WSMessage{
-			Type: "status",
-			Data: "AI 답변을 생성하고 있습니다...",
+			Type: "answer",
+			Data: resp.Answer,
 		})
-
-		// 8. 스트리밍 답변 생성
-		err = h.server.generateAnswerStream(ctx, req.Query, articles, func(chunk string) error {
-			return conn.WriteJSON(WSMessage{
-				Type: "answer",
-				Data: chunk,
-			})
-		})
-
-		if err != nil {
-			searchLog.Error().Err(err).Msg("Failed to generate answer")
-			conn.WriteJSON(WSMessage{
-				Type: "error",
-				Data: fmt.Sprintf("Failed to generate answer: %v", err),
-			})
-			continue
-		}
 
 		// 완료 알림
 		conn.WriteJSON(WSMessage{

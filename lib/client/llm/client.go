@@ -24,22 +24,46 @@ type Client struct {
 }
 
 type ChatMessage struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
+	Role       string     `json:"role"`
+	Content    string     `json:"content"`
+	ToolCalls  []ToolCall `json:"tool_calls,omitempty"`
+	ToolCallID string     `json:"tool_call_id,omitempty"` // For tool response messages
+}
+
+type ToolCall struct {
+	ID       string       `json:"id"`
+	Type     string       `json:"type"`
+	Function FunctionCall `json:"function"`
+}
+
+type FunctionCall struct {
+	Name      string `json:"name"`
+	Arguments string `json:"arguments"`
+}
+
+type Tool struct {
+	Type     string       `json:"type"`
+	Function FunctionDent `json:"function"`
+}
+
+type FunctionDent struct {
+	Name        string          `json:"name"`
+	Description string          `json:"description"`
+	Parameters  json.RawMessage `json:"parameters"`
 }
 
 type ChatRequest struct {
-	Model    string        `json:"model"`
-	Messages []ChatMessage `json:"messages"`
-	Stream   bool          `json:"stream"`
+	Model      string        `json:"model"`
+	Messages   []ChatMessage `json:"messages"`
+	Stream     bool          `json:"stream"`
+	Tools      []Tool        `json:"tools,omitempty"`
+	ToolChoice interface{}   `json:"tool_choice,omitempty"` // "auto", "none" or specific tool
 }
 
 type ChatResponse struct {
 	ID      string `json:"id"`
 	Choices []struct {
-		Message struct {
-			Content string `json:"content"`
-		} `json:"message"`
+		Message ChatMessage `json:"message"` // Changed to reuse ChatMessage struct
 	} `json:"choices"`
 }
 
@@ -103,6 +127,65 @@ func NewClient(provider, genBaseURL, genKey, genModel, ollamaBaseURL string) *Cl
 
 	log.EndWithMsg("LLM client created successfully")
 	return client
+}
+
+// Chat generates a response for a chat conversation, potentially calling tools
+func (c *Client) Chat(ctx context.Context, messages []ChatMessage, tools []Tool) (*ChatMessage, error) {
+	log := logger.NewLogger("llm-chat")
+
+	reqPayload := ChatRequest{
+		Model:    c.genModel,
+		Messages: messages,
+		Stream:   false,
+		Tools:    tools,
+	}
+	if len(tools) > 0 {
+		reqPayload.ToolChoice = "auto"
+	}
+
+	reqBody, err := json.Marshal(reqPayload)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	url := fmt.Sprintf("%s/v1/chat/completions", c.genBaseURL)
+	httpReq, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(reqBody))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	httpReq.Header.Set("Content-Type", "application/json")
+	if c.genKey != "" {
+		httpReq.Header.Set("Authorization", "Bearer "+c.genKey)
+	}
+	if c.provider == ProviderOpenRouter {
+		httpReq.Header.Set("HTTP-Referer", "https://github.com/snowmerak/open-librarian")
+		httpReq.Header.Set("X-Title", "Open Librarian")
+	}
+
+	log.Info().Str("url", url).Str("model", c.genModel).Int("msg_count", len(messages)).Msg("Sending chat request")
+
+	resp, err := c.httpClient.Do(httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("failed to send request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	var chatResp ChatResponse
+	if err := json.NewDecoder(resp.Body).Decode(&chatResp); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	if len(chatResp.Choices) == 0 {
+		return nil, fmt.Errorf("no choices in response")
+	}
+
+	return &chatResp.Choices[0].Message, nil
 }
 
 // GenerateText generates text using the configured provider via OpenAI-compatible API

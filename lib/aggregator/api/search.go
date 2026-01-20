@@ -2,157 +2,235 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"math"
 	"regexp"
 	"strconv"
 	"strings"
 
+	"github.com/snowmerak/open-librarian/lib/client/llm"
 	"github.com/snowmerak/open-librarian/lib/client/opensearch"
 	"github.com/snowmerak/open-librarian/lib/client/qdrant"
 	"github.com/snowmerak/open-librarian/lib/util/logger"
 )
 
-// Search performs hybrid search combining vector and keyword search
+// Search performs hybrid search primarily driven by LLM tool usage
 func (s *Server) Search(ctx context.Context, req *SearchRequest) (*SearchResponse, error) {
-	searchLogger := logger.NewLogger("search").StartWithMsg("Performing hybrid search")
-	searchLogger.Info().
-		Str("query", req.Query).
-		Int("requested_size", req.Size).
-		Msg("Starting search operation")
+	searchLogger := logger.NewLogger("search").StartWithMsg("Performing LLM-driven search")
+	searchLogger.Info().Str("query", req.Query).Msg("Starting search operation")
 
-	// 1. Detect query language
-	langLogger := logger.NewLogger("query_language_detection").StartWithMsg("Detecting query language")
+	// Detect query language (still useful for context)
 	queryLang := s.languageDetector.DetectLanguage(req.Query)
-	langLogger.Info().Str("detected_language", queryLang).Msg("Query language detected")
-	langLogger.EndWithMsg("Query language detection complete")
 
-	// 2. Generate query embedding for vector search
-	embeddingLogger := logger.NewLogger("query_embedding").StartWithMsg("Generating query embedding")
-	queryEmbedding, err := s.llmClient.GenerateEmbedding(ctx, "query: "+req.Query)
-	if err != nil {
-		embeddingLogger.EndWithError(err)
-		searchLogger.EndWithError(err)
-		return nil, fmt.Errorf("failed to generate query embedding: %w", err)
-	}
-	embeddingLogger.Info().Int("embedding_size", len(queryEmbedding)).Msg("Query embedding generated")
-	embeddingLogger.EndWithMsg("Query embedding generation complete")
+	// Define system prompt
+	systemPrompt := `You are an intelligent librarian. Your goal is to answer the user's question accurately using the provided tools.
+- You MUST use the provided search tools ("vector_search" or "keyword_search") to find relevant information.
+- You can use multiple tools or the same tool multiple times if needed.
+- "vector_search" is best for conceptual queries. "keyword_search" is best for specific terms.
+- If you find relevant information, use it to answer the user's question comprehensively in Markdown format.
+- If you cannot find any relevant information after trying, admit that you don't know and suggest what else the user might try.
+- Always answer in the same language as the user's question.`
 
-	// 3. Set default size if not provided
-	size := req.Size
-	if size == 0 {
-		size = 5 // Default to top 5 results for AI answer generation
+	messages := []llm.ChatMessage{
+		{Role: "system", Content: systemPrompt},
+		{Role: "user", Content: req.Query},
 	}
 
-	// Calculate expanded search size (2x the requested size for each search)
-	expandedSize := size * 2
-	searchLogger.Info().
-		Int("final_size", size).
-		Int("expanded_size", expandedSize).
-		Msg("Search parameters configured")
+	tools := GetSearchTools()
 
-	// 4. Perform parallel searches
-	// 4a. Vector search with Qdrant (search both title and summary embeddings)
-	vectorLogger := logger.NewLogger("vector_search").StartWithMsg("Performing vector search")
-	allVectorResults, err := s.qdrantClient.VectorSearch(ctx, queryEmbedding, uint64(expandedSize*2), queryLang)
-	if err != nil {
-		vectorLogger.Warn().Err(err).Msg("Vector search failed, continuing with empty results")
-		vectorLogger.EndWithError(err)
-		allVectorResults = []qdrant.VectorSearchResult{}
-	} else {
-		vectorLogger.Info().Int("total_results", len(allVectorResults)).Msg("Vector search completed")
-		vectorLogger.EndWithMsg("Vector search complete")
-	}
+	var finalAnswer string
+	var accumulatedSources []SearchResultWithScore
 
-	// Separate title and summary results and log vector search scores
-	var titleVectorResults, summaryVectorResults []qdrant.VectorSearchResult
-	for _, result := range allVectorResults {
-		if len(result.ID) > 6 && result.ID[len(result.ID)-6:] == "_title" {
-			titleVectorResults = append(titleVectorResults, result)
-			vectorLogger.Debug().
-				Str("article_id", s.extractArticleID(result.ID)).
-				Float64("score", float64(result.Score)).
-				Str("type", "title").
-				Msg("Vector search result classified")
-		} else if len(result.ID) > 8 && result.ID[len(result.ID)-8:] == "_summary" {
-			summaryVectorResults = append(summaryVectorResults, result)
-			vectorLogger.Debug().
-				Str("article_id", s.extractArticleID(result.ID)).
-				Float64("score", float64(result.Score)).
-				Str("type", "summary").
-				Msg("Vector search result classified")
-		}
-	}
-
-	// Combine and deduplicate vector results, limiting to expandedSize
-	// Combine and deduplicate vector results, limiting to expandedSize
-	combinedVectorResults := s.combineVectorResults(titleVectorResults, summaryVectorResults, expandedSize)
-
-	// 4b. Keyword search with OpenSearch
-	// Request expandedSize to get more candidates for better score combination
-	keywordResp, err := s.opensearchClient.KeywordSearch(ctx, req.Query, queryLang, expandedSize, req.From)
-	if err != nil {
-		searchLogger.Error().Err(err).Msg("Keyword search failed")
-		keywordResp = &opensearch.SearchResponse{Results: []opensearch.SearchResult{}}
-	}
-
-	// Log keyword search scores
-	for _, result := range keywordResp.Results {
-		searchLogger.Debug().
-			Str("article_id", result.Article.ID).
-			Float64("score", result.Score).
-			Msg("Keyword search result")
-	}
-
-	// 5. Get articles by IDs from vector search results
-	var vectorArticleIDs []string
-	uniqueIDs := make(map[string]bool)
-	for _, result := range combinedVectorResults {
-		// Extract original article ID (remove _title or _summary suffix)
-		articleID := s.extractArticleID(result.ID)
-		if !uniqueIDs[articleID] {
-			vectorArticleIDs = append(vectorArticleIDs, articleID)
-			uniqueIDs[articleID] = true
-		}
-	}
-
-	var vectorArticles []opensearch.Article
-	if len(vectorArticleIDs) > 0 {
-		vectorArticles, err = s.opensearchClient.GetArticlesByIDs(ctx, vectorArticleIDs)
+	// Tool calling loop
+	maxTurns := 5
+	for i := 0; i < maxTurns; i++ {
+		respMsg, err := s.llmClient.Chat(ctx, messages, tools)
 		if err != nil {
-			searchLogger.Error().Err(err).Msg("Failed to get articles by IDs")
-			vectorArticles = []opensearch.Article{}
+			return nil, fmt.Errorf("LLM chat error: %w", err)
+		}
+
+		messages = append(messages, *respMsg)
+
+		if len(respMsg.ToolCalls) == 0 {
+			// No more tool calls, this is the final answer
+			finalAnswer = respMsg.Content
+			break
+		}
+
+		// Handle tool calls
+		for _, toolCall := range respMsg.ToolCalls {
+			toolResult := ""
+
+			switch toolCall.Function.Name {
+			case ToolVectorSearch:
+				var args struct {
+					Query string `json:"query"`
+				}
+				if err := json.Unmarshal([]byte(toolCall.Function.Arguments), &args); err != nil {
+					toolResult = fmt.Sprintf("Error parsing arguments: %v", err)
+				} else {
+					results, err := s.executeVectorSearch(ctx, args.Query, queryLang, req.Query)
+					if err != nil {
+						toolResult = fmt.Sprintf("Error executing vector search: %v", err)
+					} else {
+						toolResult = s.formatSearchResults(results)
+						s.mergeSources(&accumulatedSources, results)
+					}
+				}
+
+			case ToolKeywordSearch:
+				var args struct {
+					Keywords string `json:"keywords"`
+				}
+				if err := json.Unmarshal([]byte(toolCall.Function.Arguments), &args); err != nil {
+					toolResult = fmt.Sprintf("Error parsing arguments: %v", err)
+				} else {
+					results, err := s.executeKeywordSearch(ctx, args.Keywords, queryLang, req.Query)
+					if err != nil {
+						toolResult = fmt.Sprintf("Error executing keyword search: %v", err)
+					} else {
+						toolResult = s.formatSearchResults(results)
+						s.mergeSources(&accumulatedSources, results)
+					}
+				}
+			default:
+				toolResult = "Unknown tool"
+			}
+
+			// Append tool result message
+			messages = append(messages, llm.ChatMessage{
+				Role:       "tool",
+				Content:    toolResult,
+				ToolCallID: toolCall.ID,
+			})
 		}
 	}
 
-	// 6. Combine and deduplicate results
-	combinedResults := s.combineSearchResults(combinedVectorResults, vectorArticles, keywordResp.Results, size)
-
-	// 6.5. Validate search relevance using LLM
-	filteredResults, err := s.validateSearchRelevance(ctx, req.Query, combinedResults)
-	if err != nil {
-		searchLogger.Warn().Err(err).Msg("Failed to validate search relevance")
-		// Continue with original results if validation fails
-		filteredResults = combinedResults
-	}
-
-	// 7. Extract articles for AI answer generation
-	articles := make([]opensearch.Article, len(filteredResults))
-	for i, result := range filteredResults {
-		articles[i] = result.Article
-	}
-
-	// 8. Generate AI answer using search results
-	answer, err := s.generateAnswer(ctx, req.Query, articles)
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate answer: %w", err)
+	// Convert accumulated sources to Article list for response
+	finalSources := make([]opensearch.Article, len(accumulatedSources))
+	for i, src := range accumulatedSources {
+		finalSources[i] = src.Article
 	}
 
 	return &SearchResponse{
-		Answer:  answer,
-		Sources: filteredResults,
-		Took:    keywordResp.Took, // Use keyword search timing for now
+		Answer:  finalAnswer,
+		Sources: accumulatedSources, // Use the new struct type or convert if needed. The response struct expects []SearchResultWithScore
+		Took:    0,                  // Not tracking singular took time anymore
 	}, nil
+}
+
+// executeVectorSearch performs vector search and relevance validation
+func (s *Server) executeVectorSearch(ctx context.Context, query string, lang string, originalQuery string) ([]SearchResultWithScore, error) {
+	// Generate embedding
+	embedding, err := s.llmClient.GenerateEmbedding(ctx, "query: "+query)
+	if err != nil {
+		return nil, err
+	}
+
+	// Search Qdrant
+	rawResults, err := s.qdrantClient.VectorSearch(ctx, embedding, 10, lang) // Fetch more candidates
+	if err != nil {
+		return nil, err
+	}
+
+	// Process results
+	var candidates []SearchResultWithScore
+	uniqueIDs := make(map[string]bool)
+	var needFetchIDs []string
+
+	for _, res := range rawResults {
+		id := s.extractArticleID(res.ID)
+		if !uniqueIDs[id] {
+			uniqueIDs[id] = true
+			needFetchIDs = append(needFetchIDs, id)
+			// Temporarily store score mapping, actual article fetch is needed
+		}
+	}
+
+	if len(needFetchIDs) == 0 {
+		return []SearchResultWithScore{}, nil
+	}
+
+	articles, err := s.opensearchClient.GetArticlesByIDs(ctx, needFetchIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, art := range articles {
+		// Find max score for this article from rawResults
+		maxScore := 0.0
+		for _, raw := range rawResults {
+			if s.extractArticleID(raw.ID) == art.ID {
+				if float64(raw.Score) > maxScore {
+					maxScore = float64(raw.Score)
+				}
+			}
+		}
+		candidates = append(candidates, SearchResultWithScore{
+			Article: art,
+			Score:   maxScore,
+			Source:  "vector",
+		})
+	}
+
+	// Relevance Validation
+	return s.validateSearchRelevance(ctx, originalQuery, candidates)
+}
+
+// executeKeywordSearch performs keyword search and relevance validation
+func (s *Server) executeKeywordSearch(ctx context.Context, keywords string, lang string, originalQuery string) ([]SearchResultWithScore, error) {
+	resp, err := s.opensearchClient.KeywordSearch(ctx, keywords, lang, 10, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	var candidates []SearchResultWithScore
+	for _, res := range resp.Results {
+		candidates = append(candidates, SearchResultWithScore{
+			Article: res.Article,
+			Score:   res.Score, // Note: Keyword scores are not 0-1, maybe normalize?
+			Source:  "keyword",
+		})
+	}
+
+	// Relevance Validation
+	return s.validateSearchRelevance(ctx, originalQuery, candidates)
+}
+
+func (s *Server) formatSearchResults(results []SearchResultWithScore) string {
+	if len(results) == 0 {
+		return "No relevant results found."
+	}
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("Found %d relevant documents:\n", len(results)))
+	for i, res := range results {
+		// Provide summary or truncated content
+		content := res.Article.Summary
+		if content == "" {
+			if len(res.Article.Content) > 500 {
+				content = res.Article.Content[:500] + "..."
+			} else {
+				content = res.Article.Content
+			}
+		}
+		sb.WriteString(fmt.Sprintf("%d. [ID: %s] Title: %s\nContent: %s\n\n", i+1, res.Article.ID, res.Article.Title, content))
+	}
+	return sb.String()
+}
+
+func (s *Server) mergeSources(target *[]SearchResultWithScore, new []SearchResultWithScore) {
+	existingIDs := make(map[string]bool)
+	for _, t := range *target {
+		existingIDs[t.Article.ID] = true
+	}
+
+	for _, n := range new {
+		if !existingIDs[n.Article.ID] {
+			*target = append(*target, n)
+			existingIDs[n.Article.ID] = true
+		}
+	}
 }
 
 // combineSearchResults combines vector and keyword search results with scoring
