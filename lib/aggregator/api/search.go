@@ -195,9 +195,10 @@ func (s *Server) executeKeywordSearch(ctx context.Context, keywords string, lang
 
 	var candidates []SearchResultWithScore
 	for _, res := range resp.Results {
+		normalizedScore := s.normalizeKeywordScore(res.Score)
 		candidates = append(candidates, SearchResultWithScore{
 			Article: res.Article,
-			Score:   res.Score, // Note: Keyword scores are not 0-1, maybe normalize?
+			Score:   normalizedScore,
 			Source:  "keyword",
 		})
 	}
