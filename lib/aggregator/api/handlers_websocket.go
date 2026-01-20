@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	mongoClient "github.com/snowmerak/open-librarian/lib/client/mongo"
 	"github.com/snowmerak/open-librarian/lib/util/logger"
 )
 
@@ -62,6 +63,29 @@ func (h *HTTPServer) WebSocketSearchHandler(w http.ResponseWriter, r *http.Reque
 			Data: "AI 에이전트가 답변을 생성하고 있습니다...",
 		})
 
+		// Chat Session Management
+		var session *mongoClient.ChatSession
+		if req.SessionID != "" {
+			s, err := h.server.mongoClient.GetChatSession(ctx, req.SessionID)
+			if err == nil {
+				session = s
+			}
+		}
+
+		if session == nil {
+			session = &mongoClient.ChatSession{
+				Title:    req.Query,
+				Messages: []mongoClient.ChatMessage{},
+			}
+		}
+
+		// Add User Message
+		session.Messages = append(session.Messages, mongoClient.ChatMessage{
+			Role:      "user",
+			Content:   req.Query,
+			Timestamp: time.Now(),
+		})
+
 		// AI 검색 수행 (Agentic Search)
 		resp, err := h.server.Search(ctx, &req)
 		if err != nil {
@@ -71,6 +95,18 @@ func (h *HTTPServer) WebSocketSearchHandler(w http.ResponseWriter, r *http.Reque
 				Data: fmt.Sprintf("Search failed: %v", err),
 			})
 			continue
+		}
+
+		// Add AI Message & Save Session
+		session.Messages = append(session.Messages, mongoClient.ChatMessage{
+			Role:      "assistant",
+			Content:   resp.Answer,
+			Sources:   resp.Sources,
+			Timestamp: time.Now(),
+		})
+
+		if err := h.server.mongoClient.SaveChatSession(ctx, session); err != nil {
+			searchLog.Error().Err(err).Msg("Failed to save chat session")
 		}
 
 		// 참조 소스 전송
@@ -88,7 +124,10 @@ func (h *HTTPServer) WebSocketSearchHandler(w http.ResponseWriter, r *http.Reque
 		// 완료 알림
 		conn.WriteJSON(WSMessage{
 			Type: "done",
-			Data: "검색이 완료되었습니다.",
+			Data: map[string]interface{}{
+				"message":    "검색이 완료되었습니다.",
+				"session_id": session.ID.Hex(),
+			},
 		})
 
 		searchLog.EndWithMsg("Search request completed successfully")

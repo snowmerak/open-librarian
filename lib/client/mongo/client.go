@@ -67,6 +67,13 @@ func (c *Client) InitializeDatabase(ctx context.Context) error {
 		return err
 	}
 
+	// Create chat indexes
+	err = c.CreateChatIndexes(ctx)
+	if err != nil {
+		initLogger.EndWithError(err)
+		return err
+	}
+
 	initLogger.EndWithMsg("MongoDB database initialization complete")
 	return nil
 }

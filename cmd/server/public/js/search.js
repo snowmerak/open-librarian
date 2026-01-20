@@ -2,6 +2,7 @@
 
 // Global counter for generating unique IDs
 let messageIdCounter = 0;
+let currentSessionId = null;
 
 // 메인 검색 함수 (WebSocket 스트리밍)
 async function handleStreamSearch() {
@@ -21,9 +22,6 @@ async function handleStreamSearch() {
     }
 
     // 1. 사용자 메시지 추가
-    if (typeof appendUserMessage === 'undefined') {
-         // Should be defined below, but just in case
-    }
     appendUserMessage(query);
     scrollToBottom();
 
@@ -31,11 +29,6 @@ async function handleStreamSearch() {
     const messageIds = appendAiMessage();
     const { contentId, statusId, sourcesId } = messageIds;
     scrollToBottom();
-
-    // 검색 기록 저장 (비동기로 실행) - database.js의 함수 사용
-    if (typeof saveSearchToHistory === 'function') {
-        saveSearchToHistory(query).catch(console.error);
-    }
 
     try {
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -48,7 +41,8 @@ async function handleStreamSearch() {
             // 검색 요청 전송
             ws.send(JSON.stringify({
                 query: query,
-                size: 5 // 기본값
+                size: 5, // 기본값
+                session_id: currentSessionId || "" // 세션 ID 전송
             }));
         };
 
@@ -75,6 +69,16 @@ async function handleStreamSearch() {
                         break;
                     case 'done':
                         updateAiStatus(statusId, ''); // 상태 메시지 제거 (완료)
+                        
+                        // 세션 ID 업데이트 check
+                        if (message.data && message.data.session_id) {
+                            currentSessionId = message.data.session_id;
+                            // 히스토리 목록 갱신 요청
+                            if (typeof updateHistoryDisplay === 'function') {
+                                updateHistoryDisplay();
+                            }
+                        }
+                        
                         ws.close();
                         break;
                     default:
@@ -94,6 +98,77 @@ async function handleStreamSearch() {
         console.error('Stream search error:', error);
         updateAiStatus(statusId, `<span class="text-red-500">${error.message}</span>`);
     }
+}
+
+// 세션 변경 처리
+function setCurrentSession(sessionId) {
+    currentSessionId = sessionId;
+}
+
+// 채팅 화면 초기화
+function clearChatInterface() {
+    const chatContainer = document.getElementById('chat-container');
+    const welcomeMessage = document.getElementById('welcome-message');
+    
+    // 환영 메시지 제외하고 모두 제거
+    if (chatContainer) {
+        // chatContainer의 자식 중 welcome-message가 아닌 것들 제거
+        Array.from(chatContainer.children).forEach(child => {
+            if (child.id !== 'welcome-message') {
+                chatContainer.removeChild(child);
+            }
+        });
+        
+        if (welcomeMessage) {
+            welcomeMessage.style.display = 'block';
+        }
+    }
+    
+    currentSessionId = null;
+}
+
+// 정적 AI 메시지 렌더링 (히스토리 로드용)
+function renderStaticAiMessage(content, sources) {
+    const container = document.getElementById('chat-container');
+    const id = messageIdCounter++;
+    const contentId = `ai-content-${id}`;
+    const sourcesId = `ai-sources-${id}`;
+    
+    const msgDiv = document.createElement('div');
+    msgDiv.className = 'flex w-full mt-6 space-x-3 max-w-4xl mx-auto ai-bubble-container';
+    
+    // 소스 HTML 생성
+    let sourcesHtml = '';
+    if (sources && sources.length > 0) {
+        sources.forEach((source, index) => {
+             // 소스 구조가 유동적일 수 있으므로 체크 (DB 저장 구조 vs 실시간 구조)
+             // DB Saved: source might be simpler or same
+             const title = source.article ? source.article.title : (source.Title || "Source");
+             sourcesHtml += `
+                <div class="source-chip" title="${escapeHtml(title)}">
+                    <span class="font-semibold mr-1">${index + 1}.</span>
+                    <span class="truncate max-w-[150px]">${escapeHtml(title)}</span>
+                </div>
+            `;
+        });
+    }
+
+    msgDiv.innerHTML = `
+        <div class="ai-avatar">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+        </div>
+        <div class="min-w-0 flex-1 w-full">
+            <div class="ai-bubble">
+                <div id="${sourcesId}" class="flex flex-wrap gap-2 mb-3">${sourcesHtml}</div>
+                <div id="${contentId}" class="markdown-content text-slate-800"></div>
+            </div>
+        </div>
+    `;
+    
+    container.appendChild(msgDiv);
+    
+    // Markdown 렌더링
+    updateAiContent(contentId, content);
 }
 
 // 사용자 메시지 추가
@@ -240,4 +315,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // 전역 함수로 노출
 window.handleSearch = handleStreamSearch;
-window.searchFromHistory = searchFromHistory;
+window.searchFromHistory = null; // Will be defined in ui.js properly or handled via loadChatSession
+window.setCurrentSession = setCurrentSession;
+window.clearChatInterface = clearChatInterface;
+window.renderStaticAiMessage = renderStaticAiMessage;
+window.appendUserMessage = appendUserMessage; // Export for external use

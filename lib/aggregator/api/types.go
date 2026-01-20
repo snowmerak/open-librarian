@@ -15,11 +15,12 @@ type ArticleRequest struct {
 
 // SearchRequest represents the search request
 type SearchRequest struct {
-	Query    string `json:"query" validate:"required"`
-	Size     int    `json:"size,omitempty"`
-	From     int    `json:"from,omitempty"`
-	DateFrom string `json:"date_from,omitempty"` // RFC3339 format for filtering articles created after this date
-	DateTo   string `json:"date_to,omitempty"`   // RFC3339 format for filtering articles created before this date
+	Query     string `json:"query" validate:"required"`
+	Size      int    `json:"size,omitempty"`
+	From      int    `json:"from,omitempty"`
+	DateFrom  string `json:"date_from,omitempty"`  // RFC3339 format for filtering articles created after this date
+	DateTo    string `json:"date_to,omitempty"`    // RFC3339 format for filtering articles created before this date
+	SessionID string `json:"session_id,omitempty"` // For chat history
 }
 
 // ArticleResponse represents the response after adding an article

@@ -66,6 +66,11 @@ func (h *HTTPServer) SetupRoutes() *chi.Mux {
 		// Users
 		h.server.RegisterUserRoutes(r)
 
+		// Chat History
+		r.Get("/chat/history", h.GetChatHistoryHandler)
+		r.Get("/chat/history/{id}", h.GetChatSessionHandler)
+		r.Delete("/chat/history/{id}", h.DeleteChatSessionHandler)
+
 		// Utilities
 		r.Get("/languages", h.GetSupportedLanguagesHandler)
 
