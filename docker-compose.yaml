@@ -98,6 +98,9 @@ services:
       - QDRANT_PORT=6334
       - MONGODB_URI=mongodb://admin:password@mongodb:27017/open_librarian?authSource=admin
       - JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
+      - LLM_PROVIDER=openrouter
+      - LLM_API_KEY=${OPENROUTER_API_KEY}
+      - LLM_MODEL=openai/gpt-oss-20b
     depends_on:
       opensearch:
         condition: service_healthy
