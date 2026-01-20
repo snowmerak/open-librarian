@@ -11,6 +11,7 @@
     <style>
         .glass-effect {
             background: rgba(255, 255, 255, 0.95);
+            -webkit-backdrop-filter: blur(10px);
             backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.2);
         }
@@ -49,6 +50,7 @@
 
         .search-input {
             background: rgba(255, 255, 255, 0.95);
+            -webkit-backdrop-filter: blur(10px);
             backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.3);
             transition: all 0.3s ease;
@@ -103,6 +105,7 @@
         }
 
         .auth-modal {
+            -webkit-backdrop-filter: blur(5px);
             background: rgba(0, 0, 0, 0.5);
             backdrop-filter: blur(5px);
         }
@@ -153,7 +156,7 @@
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
                     <span class="hidden md:inline ml-3" data-i18n="addArticle">아티클 추가</span>
                 </a>
-                <a href="my-articles.html" class="nav-link flex items-center p-3 text-sm font-medium text-gray-600 hover:text-gray-800" id="my-articles-link" style="display: none;">
+                <a href="my-articles.html" class="nav-link flex items-center p-3 text-sm font-medium text-gray-600 hover:text-gray-800 hidden" id="my-articles-link">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14,2 14,8 20,8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10,9 9,9 8,9"></polyline></svg>
                     <span class="hidden md:inline ml-3" data-i18n="myArticles">내 아티클</span>
                 </a>
@@ -248,7 +251,7 @@
                         <div class="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl blur opacity-25 group-hover:opacity-40 transition duration-200"></div>
                         <div class="relative flex items-center bg-white rounded-xl shadow-sm border border-slate-200">
                             <input id="search-input" type="text" data-i18n-placeholder="searchPlaceholder" placeholder="궁금한 내용을 입력하세요..." class="w-full pl-6 pr-16 py-4 text-lg bg-transparent rounded-xl focus:outline-none" onkeydown="if(event.key === 'Enter') handleSearch()">
-                            <button onclick="handleSearch()" class="absolute right-2 p-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-md">
+                            <button onclick="handleSearch()" aria-label="Search" class="absolute right-2 p-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-md">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                             </button>
                         </div>
@@ -326,9 +329,9 @@
                                             <div class="flex justify-between text-sm text-slate-600 mb-2">
                                                 <span data-i18n="uploadProgress">업로드 진행률</span>
                                                 <span><span id="current-progress">0</span> / <span id="total-progress">0</span></span>
-                                            </div>
+                                            </div> w-0
                                             <div class="w-full bg-slate-200 rounded-full h-2">
-                                                <div id="progress-bar" class="bg-indigo-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                                                <div id="progress-bar" class="bg-indigo-600 h-2 rounded-full transition-all duration-300 w-0"></div>
                                             </div>
                                         </div>
                                         <div id="current-item" class="text-sm text-slate-600 mb-4 font-medium"></div>
@@ -354,7 +357,7 @@
             <div class="p-6">
                 <div class="flex justify-between items-center mb-4">
                     <h2 id="auth-modal-title" class="text-xl font-semibold text-slate-800"></h2>
-                    <button onclick="closeAuthModal()" class="text-slate-400 hover:text-slate-600">
+                    <button onclick="closeAuthModal()" aria-label="Close" class="text-slate-400 hover:text-slate-600">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                     </button>
                 </div>
@@ -433,7 +436,7 @@
         <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[80vh] flex flex-col overflow-hidden transform scale-100 transition-transform duration-300">
             <div class="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
                 <h3 id="source-modal-title" class="text-lg font-semibold text-slate-800 truncate pr-4">Source Title</h3>
-                <button onclick="closeSourceModal()" class="text-slate-400 hover:text-slate-600 transition-colors p-1 rounded-full hover:bg-slate-200">
+                <button onclick="closeSourceModal()" aria-label="Close" class="text-slate-400 hover:text-slate-600 transition-colors p-1 rounded-full hover:bg-slate-200">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                 </button>
             </div>
