@@ -67,7 +67,7 @@ Text:
 
 Detailed Summary:`, req.Content)
 
-	summary, err := s.ollamaClient.GenerateText(ctx, summaryPrompt)
+	summary, err := s.llmClient.GenerateText(ctx, summaryPrompt)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate summary: %w", err)
 	}
@@ -83,7 +83,7 @@ Text:
 
 Keywords:`, req.Content)
 
-	tagsText, err := s.ollamaClient.GenerateText(ctx, tagsPrompt)
+	tagsText, err := s.llmClient.GenerateText(ctx, tagsPrompt)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate tags: %w", err)
 	}
@@ -96,12 +96,12 @@ Keywords:`, req.Content)
 	}
 
 	// 4. Generate embeddings for both title and summary
-	titleEmbedding, err := s.ollamaClient.GenerateEmbedding(ctx, "passage: "+req.Title)
+	titleEmbedding, err := s.llmClient.GenerateEmbedding(ctx, "passage: "+req.Title)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate title embedding: %w", err)
 	}
 
-	summaryEmbedding, err := s.ollamaClient.GenerateEmbedding(ctx, "passage: "+summary)
+	summaryEmbedding, err := s.llmClient.GenerateEmbedding(ctx, "passage: "+summary)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate summary embedding: %w", err)
 	}
@@ -259,7 +259,7 @@ Detailed Summary:`, req.Content)
 	summaryCtx, cancel := context.WithTimeout(ctx, 3*time.Minute)
 	defer cancel()
 
-	summary, err := s.ollamaClient.GenerateText(summaryCtx, summaryPrompt)
+	summary, err := s.llmClient.GenerateText(summaryCtx, summaryPrompt)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate summary: %w", err)
 	}
@@ -281,7 +281,7 @@ Keywords:`, req.Content)
 	tagsCtx, cancel2 := context.WithTimeout(ctx, 3*time.Minute)
 	defer cancel2()
 
-	tagsText, err := s.ollamaClient.GenerateText(tagsCtx, tagsPrompt)
+	tagsText, err := s.llmClient.GenerateText(tagsCtx, tagsPrompt)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate tags: %w", err)
 	}
@@ -302,12 +302,12 @@ Keywords:`, req.Content)
 	embeddingCtx, cancel3 := context.WithTimeout(ctx, 2*time.Minute)
 	defer cancel3()
 
-	titleEmbedding, err := s.ollamaClient.GenerateEmbedding(embeddingCtx, "passage: "+req.Title)
+	titleEmbedding, err := s.llmClient.GenerateEmbedding(embeddingCtx, "passage: "+req.Title)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate title embedding: %w", err)
 	}
 
-	summaryEmbedding, err := s.ollamaClient.GenerateEmbedding(embeddingCtx, "passage: "+summary)
+	summaryEmbedding, err := s.llmClient.GenerateEmbedding(embeddingCtx, "passage: "+summary)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate summary embedding: %w", err)
 	}
@@ -485,7 +485,7 @@ func (s *Server) AddArticlesBulkWithProgress(ctx context.Context, req *BulkArtic
 // checkDuplicateArticle checks if an article with similar title and content already exists
 func (s *Server) checkDuplicateArticle(ctx context.Context, title, content string) (bool, string, error) {
 	// Generate embeddings for title and content
-	titleEmbedding, err := s.ollamaClient.GenerateEmbedding(ctx, "passage: "+title)
+	titleEmbedding, err := s.llmClient.GenerateEmbedding(ctx, "passage: "+title)
 	if err != nil {
 		return false, "", fmt.Errorf("failed to generate title embedding for duplicate check: %w", err)
 	}

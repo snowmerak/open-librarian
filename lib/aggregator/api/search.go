@@ -29,7 +29,7 @@ func (s *Server) Search(ctx context.Context, req *SearchRequest) (*SearchRespons
 
 	// 2. Generate query embedding for vector search
 	embeddingLogger := logger.NewLogger("query_embedding").StartWithMsg("Generating query embedding")
-	queryEmbedding, err := s.ollamaClient.GenerateEmbedding(ctx, "query: "+req.Query)
+	queryEmbedding, err := s.llmClient.GenerateEmbedding(ctx, "query: "+req.Query)
 	if err != nil {
 		embeddingLogger.EndWithError(err)
 		searchLogger.EndWithError(err)
@@ -497,7 +497,7 @@ Provide only scores without additional explanations.`
 	prompt := fmt.Sprintf(relevancePrompt, query, documentsText)
 
 	// Get LLM evaluation
-	evaluation, err := s.ollamaClient.GenerateText(ctx, prompt)
+	evaluation, err := s.llmClient.GenerateText(ctx, prompt)
 	if err != nil {
 		relevanceLogger.Error().Err(err).Msg("Failed to get relevance evaluation from LLM")
 		// Return original results if LLM evaluation fails

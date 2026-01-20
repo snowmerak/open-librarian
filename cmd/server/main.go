@@ -29,6 +29,19 @@ func main() {
 	port := getEnv("PORT", "8080")
 	opensearchURL := getEnv("OPENSEARCH_URL", "http://localhost:9200")
 	ollamaURL := getEnv("OLLAMA_URL", "http://localhost:11434")
+
+	llmProvider := getEnv("LLM_PROVIDER", "ollama")
+	llmURL := getEnv("LLM_URL", "")
+	if llmURL == "" {
+		if llmProvider == "ollama" {
+			llmURL = ollamaURL
+		} else if llmProvider == "openrouter" {
+			llmURL = "https://openrouter.ai/api"
+		}
+	}
+	llmKey := getEnv("LLM_API_KEY", "")
+	llmModel := getEnv("LLM_MODEL", "gemma3:12b")
+
 	qdrantHost := getEnv("QDRANT_HOST", "localhost")
 	qdrantPortStr := getEnv("QDRANT_PORT", "6334")
 	mongoURI := getEnv("MONGODB_URI", "mongodb://localhost:27017/open_librarian")
@@ -38,6 +51,9 @@ func main() {
 		Str("port", port).
 		Str("opensearch_url", opensearchURL).
 		Str("ollama_url", ollamaURL).
+		Str("llm_provider", llmProvider).
+		Str("llm_url", llmURL).
+		Str("llm_model", llmModel).
 		Str("qdrant_host", qdrantHost).
 		Str("qdrant_port", qdrantPortStr).
 		Str("mongo_uri", mongoURI).
@@ -56,7 +72,7 @@ func main() {
 
 	// Initialize API server
 	apiInitLogger := logger.NewLogger("api_init").StartWithMsg("Initializing API server")
-	apiServer, err := api.NewServer(ollamaURL, opensearchURL, qdrantHost, mongoURI, jwtSecret, qdrantPort)
+	apiServer, err := api.NewServer(llmProvider, llmURL, llmKey, llmModel, ollamaURL, opensearchURL, qdrantHost, mongoURI, jwtSecret, qdrantPort)
 	if err != nil {
 		apiInitLogger.EndWithError(err)
 		mainLogger.Error().Err(err).Msg("Failed to create API server")

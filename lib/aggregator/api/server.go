@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/snowmerak/open-librarian/lib/client/llm"
 	"github.com/snowmerak/open-librarian/lib/client/mongo"
-	"github.com/snowmerak/open-librarian/lib/client/ollama"
 	"github.com/snowmerak/open-librarian/lib/client/opensearch"
 	"github.com/snowmerak/open-librarian/lib/client/qdrant"
 	"github.com/snowmerak/open-librarian/lib/util/language"
@@ -14,7 +14,7 @@ import (
 
 // Server represents the main API server
 type Server struct {
-	ollamaClient     *ollama.Client
+	llmClient        *llm.Client
 	opensearchClient *opensearch.Client
 	qdrantClient     *qdrant.Client
 	mongoClient      *mongo.Client
@@ -23,7 +23,7 @@ type Server struct {
 }
 
 // NewServer creates a new API server instance
-func NewServer(ollamaBaseURL, opensearchBaseURL, qdrantHost, mongoURI, jwtSecret string, qdrantPort int) (*Server, error) {
+func NewServer(llmProvider, llmBaseURL, llmKey, llmModel, ollamaBaseURL, opensearchBaseURL, qdrantHost, mongoURI, jwtSecret string, qdrantPort int) (*Server, error) {
 	serverLogger := logger.NewLogger("server_init").StartWithMsg("Initializing server components")
 
 	// Initialize Qdrant client
@@ -71,11 +71,12 @@ func NewServer(ollamaBaseURL, opensearchBaseURL, qdrantHost, mongoURI, jwtSecret
 	jwtLogger.EndWithMsg("JWT service initialization complete")
 
 	// Create other clients
-	ollamaClient := ollama.NewClient(ollamaBaseURL)
+	llmClient := llm.NewClient(llmProvider, llmBaseURL, llmKey, llmModel, ollamaBaseURL)
 	opensearchClient := opensearch.NewClient(opensearchBaseURL)
 	languageDetector := language.NewDetector()
 
 	serverLogger.Info().
+		Str("llm_provider", llmProvider).
 		Str("ollama_url", ollamaBaseURL).
 		Str("opensearch_url", opensearchBaseURL).
 		Str("qdrant_host", qdrantHost).
@@ -86,7 +87,7 @@ func NewServer(ollamaBaseURL, opensearchBaseURL, qdrantHost, mongoURI, jwtSecret
 	serverLogger.EndWithMsg("Server initialization complete")
 
 	return &Server{
-		ollamaClient:     ollamaClient,
+		llmClient:        llmClient,
 		opensearchClient: opensearchClient,
 		qdrantClient:     qdrantClient,
 		mongoClient:      mongoClient,
@@ -99,13 +100,13 @@ func NewServer(ollamaBaseURL, opensearchBaseURL, qdrantHost, mongoURI, jwtSecret
 func (s *Server) HealthCheck(ctx context.Context) error {
 	healthLogger := logger.NewLogger("health_check").StartWithMsg("Running health checks")
 
-	// Check Ollama
-	if err := s.ollamaClient.HealthCheck(ctx); err != nil {
-		healthLogger.Error().Err(err).Msg("Ollama health check failed")
+	// Check LLM
+	if err := s.llmClient.HealthCheck(ctx); err != nil {
+		healthLogger.Error().Err(err).Msg("LLM health check failed")
 		healthLogger.EndWithError(err)
-		return fmt.Errorf("ollama health check failed: %w", err)
+		return fmt.Errorf("llm health check failed: %w", err)
 	}
-	healthLogger.Info().Msg("Ollama health check passed")
+	healthLogger.Info().Msg("LLM health check passed")
 
 	// Check OpenSearch
 	if err := s.opensearchClient.HealthCheck(ctx); err != nil {

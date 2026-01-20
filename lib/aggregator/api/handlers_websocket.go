@@ -69,7 +69,7 @@ func (h *HTTPServer) WebSocketSearchHandler(w http.ResponseWriter, r *http.Reque
 		searchLog.Info().Str("detected_language", queryLang).Msg("Language detected")
 
 		// 2. 쿼리 임베딩 생성
-		queryEmbedding, err := h.server.ollamaClient.GenerateEmbedding(ctx, "query: "+req.Query)
+		queryEmbedding, err := h.server.llmClient.GenerateEmbedding(ctx, "query: "+req.Query)
 		if err != nil {
 			searchLog.Error().Err(err).Msg("Failed to generate query embedding")
 			conn.WriteJSON(WSMessage{

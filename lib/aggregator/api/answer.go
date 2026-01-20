@@ -258,8 +258,8 @@ Answer (Markdown format):`
 		prompt = fmt.Sprintf(promptTemplate, query, context)
 	}
 
-	answerLogger.Info().Msg("Sending prompt to Ollama for answer generation")
-	answer, err := s.ollamaClient.GenerateText(ctx, prompt)
+	answerLogger.Info().Msg("Sending prompt to LLM for answer generation")
+	answer, err := s.llmClient.GenerateText(ctx, prompt)
 	if err != nil {
 		answerLogger.EndWithError(fmt.Errorf("failed to generate answer: %w", err))
 		return "", fmt.Errorf("failed to generate answer: %w", err)
@@ -514,5 +514,5 @@ Answer (Markdown format):`
 		prompt = fmt.Sprintf(promptTemplate, query, context)
 	}
 
-	return s.ollamaClient.GenerateTextStream(ctx, prompt, callback)
+	return s.llmClient.GenerateTextStream(ctx, prompt, callback)
 }
