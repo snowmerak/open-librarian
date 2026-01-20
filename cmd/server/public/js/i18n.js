@@ -66,6 +66,9 @@ const TRANSLATIONS = {
         
         // JSONL Upload
         selectJsonlFile: 'Select JSONL File',
+        selectFile: 'Select File (JSONL, PDF, Excel, Word, Markdown)',
+        fileFormatHelp: 'Supported: JSONL, PDF, Excel(.xlsx), Word(.docx), Markdown(.md)',
+        uploadFileButton: 'Upload File',
         jsonlFormat: 'Each line must be a JSON object in the following format:',
         filePreview: 'File Preview',
         articlesFound: 'articles found',
@@ -253,6 +256,9 @@ const TRANSLATIONS = {
         
         // JSONL Upload
         selectJsonlFile: 'JSONL 파일 선택',
+        selectFile: '파일 선택 (JSONL, PDF, Excel, Word, Markdown)',
+        fileFormatHelp: '지원 형식: JSONL, PDF, Excel(.xlsx), Word(.docx), Markdown(.md)',
+        uploadFileButton: '파일 업로드',
         jsonlFormat: '각 줄은 다음 형식의 JSON 객체여야 합니다:',
         filePreview: '파일 미리보기',
         articlesFound: '개의 아티클이 발견되었습니다',

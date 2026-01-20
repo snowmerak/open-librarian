@@ -98,72 +98,165 @@ function initArticleForm() {
         }
     });
 
-    // JSONL 파일 처리
+    // 파일 선택 처리 (JSONL 및 일반 문서)
     document.getElementById('jsonl-file').addEventListener('change', function(e) {
         const file = e.target.files[0];
         const uploadBtn = document.getElementById('bulk-upload-btn');
         const preview = document.getElementById('file-preview');
+        const previewContent = document.getElementById('preview-content');
+        const totalLines = document.getElementById('total-lines');
         
         if (!file) {
             uploadBtn.disabled = true;
             preview.classList.add('hidden');
+            window.uploadFile = null;
+            window.jsonlData = null;
             return;
         }
+
+        const fileName = file.name.toLowerCase();
         
-        if (!file.name.endsWith('.jsonl') && !file.name.endsWith('.json')) {
-            alert(t('invalidFileType'));
-            e.target.value = '';
-            uploadBtn.disabled = true;
-            return;
-        }
-        
-        const reader = new FileReader();
-        reader.onload = function(event) {
-            try {
-                const content = event.target.result;
-                const lines = content.trim().split('\n').filter(line => line.trim());
-                
-                // 각 줄이 유효한 JSON인지 확인
-                const validLines = [];
-                for (let i = 0; i < lines.length; i++) {
-                    try {
-                        const parsed = JSON.parse(lines[i]);
-                        if (parsed.title && parsed.content) {
-                            validLines.push(parsed);
+        // JSONL 파일 처리
+        if (fileName.endsWith('.jsonl') || fileName.endsWith('.json')) {
+            window.uploadFile = null; // Clear binary file
+            
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                try {
+                    const content = event.target.result;
+                    const lines = content.trim().split('\n').filter(line => line.trim());
+                    
+                    // 각 줄이 유효한 JSON인지 확인
+                    const validLines = [];
+                    for (let i = 0; i < lines.length; i++) {
+                        try {
+                            const parsed = JSON.parse(lines[i]);
+                            if (parsed.title && parsed.content) {
+                                validLines.push(parsed);
+                            }
+                        } catch (parseError) {
+                            console.warn(`Line ${i + 1} is not valid JSON:`, lines[i]);
                         }
-                    } catch (parseError) {
-                        console.warn(`Line ${i + 1} is not valid JSON:`, lines[i]);
                     }
-                }
-                
-                if (validLines.length === 0) {
-                    alert(t('noValidArticles'));
+                    
+                    if (validLines.length === 0) {
+                        alert(t('noValidArticles'));
+                        uploadBtn.disabled = true;
+                        return;
+                    }
+                    
+                    // 미리보기 표시
+                    previewContent.textContent = validLines.slice(0, 3).map(item => 
+                        JSON.stringify(item, null, 2)
+                    ).join('\n\n') + (validLines.length > 3 ? '\n\n...' : '');
+                    
+                    totalLines.textContent = validLines.length;
+                    preview.classList.remove('hidden');
+                    uploadBtn.disabled = false;
+                    
+                    // 파일 데이터를 전역 변수에 저장
+                    window.jsonlData = validLines;
+                    
+                } catch (error) {
+                    alert(t('fileReadError'));
                     uploadBtn.disabled = true;
-                    return;
                 }
-                
-                // 미리보기 표시
-                const previewContent = document.getElementById('preview-content');
-                const totalLines = document.getElementById('total-lines');
-                
-                previewContent.textContent = validLines.slice(0, 3).map(item => 
-                    JSON.stringify(item, null, 2)
-                ).join('\n\n') + (validLines.length > 3 ? '\n\n...' : '');
-                
-                totalLines.textContent = validLines.length;
-                preview.classList.remove('hidden');
-                uploadBtn.disabled = false;
-                
-                // 파일 데이터를 전역 변수에 저장
-                window.jsonlData = validLines;
-                
-            } catch (error) {
-                alert(t('fileReadError'));
-                uploadBtn.disabled = true;
-            }
-        };
-        reader.readAsText(file);
+            };
+            reader.readAsText(file);
+        } 
+        // 일반 문서 파일 (PDF, DOCX, XLSX 등) 처리
+        else {
+            window.jsonlData = null; // Clear JSONL data
+            window.uploadFile = file;
+            
+            previewContent.textContent = `File: ${file.name}\nSize: ${(file.size / 1024).toFixed(2)} KB\nType: ${file.type || 'Unknown'}`;
+            totalLines.textContent = "1 (Document Upload)";
+            preview.classList.remove('hidden');
+            uploadBtn.disabled = false;
+        }
     });
+
+
+// Function to handle single file upload (PDF, XLSX, DOCX, etc.)
+async function handleSingleFileUpload(file) {
+    const uploadBtn = document.getElementById('bulk-upload-btn');
+    const uploadLog = document.getElementById('upload-log');
+    const progressContainer = document.getElementById('upload-progress');
+    const currentItem = document.getElementById('current-item');
+    const totalProgress = document.getElementById('total-progress');
+    const currentProgress = document.getElementById('current-progress');
+    
+    // UI Init
+    const originalText = uploadBtn.innerHTML;
+    uploadBtn.disabled = true;
+    uploadBtn.innerHTML = `<div class="flex items-center justify-center"><div class="spinner mr-2"></div> ${t('uploading')}</div>`;
+    progressContainer.classList.remove('hidden');
+    uploadLog.innerHTML = '';
+    
+    // Reset progress counters for single file
+    totalProgress.textContent = "1";
+    currentProgress.textContent = "1";
+
+    currentItem.innerHTML = `
+        <div class="flex items-center">
+            <div class="spinner mr-2"></div>
+            <span>Uploading: <strong>${escapeHtml(file.name)}</strong></span>
+        </div>
+    `;
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const token = getJWTToken();
+    if (!token) {
+        alert(t('loginRequired'));
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/v1/articles/upload`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            },
+            body: formData
+        });
+
+        if (!response.ok) {
+            let errMsg = `Status: ${response.status}`;
+            try {
+                const errData = await response.text(); // Get text first in case it isn't JSON
+                errMsg += ` - ${errData}`;
+            } catch (e) {}
+            throw new Error(errMsg);
+        }
+
+        const result = await response.json();
+        
+        // Success
+        currentItem.innerHTML = `<span class="text-green-600 font-bold">Upload Complete!</span>`;
+        
+        const logEntry = document.createElement('div');
+        logEntry.className = 'text-sm text-green-600 mb-1';
+        logEntry.textContent = `✓ Successfully uploaded ${file.name}`;
+        uploadLog.appendChild(logEntry);
+        
+        alert(t('articleAddedSuccess'));
+
+    } catch (error) {
+        console.error('Upload Error:', error);
+        currentItem.innerHTML = `<span class="text-red-600 font-bold">Upload Failed</span>`;
+        
+        const logEntry = document.createElement('div');
+        logEntry.className = 'text-sm text-red-600 mb-1';
+        logEntry.textContent = `✗ Error: ${error.message}`;
+        uploadLog.appendChild(logEntry);
+        
+        alert(t('articleAddError'));
+    } finally {
+        uploadBtn.disabled = false;
+        uploadBtn.innerHTML = originalText;
+    }
 }
 
 // 대량 업로드 처리 - 각 아티클을 개별 WebSocket으로 처리
@@ -175,6 +268,12 @@ async function handleBulkUpload() {
         return;
     }
     
+    // Check if we have a single binary file to upload
+    if (window.uploadFile) {
+        await handleSingleFileUpload(window.uploadFile);
+        return;
+    }
+
     if (!window.jsonlData || window.jsonlData.length === 0) {
         alert(t('noUploadData'));
         return;
