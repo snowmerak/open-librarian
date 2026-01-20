@@ -1,6 +1,7 @@
 package api
 
 import (
+	"github.com/snowmerak/open-librarian/lib/client/llm"
 	"github.com/snowmerak/open-librarian/lib/client/opensearch"
 )
 
@@ -21,6 +22,9 @@ type SearchRequest struct {
 	DateFrom  string `json:"date_from,omitempty"`  // RFC3339 format for filtering articles created after this date
 	DateTo    string `json:"date_to,omitempty"`    // RFC3339 format for filtering articles created before this date
 	SessionID string `json:"session_id,omitempty"` // For chat history
+
+	// Internal field for history
+	History []llm.ChatMessage `json:"-"`
 }
 
 // ArticleResponse represents the response after adding an article

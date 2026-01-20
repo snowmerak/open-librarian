@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/snowmerak/open-librarian/lib/client/llm"
 	mongoClient "github.com/snowmerak/open-librarian/lib/client/mongo"
 	"github.com/snowmerak/open-librarian/lib/util/logger"
 )
@@ -77,6 +78,15 @@ func (h *HTTPServer) WebSocketSearchHandler(w http.ResponseWriter, r *http.Reque
 				Title:    req.Query,
 				Messages: []mongoClient.ChatMessage{},
 			}
+		}
+
+		// Load history into request
+		// Convert existing Mongo messages to LLM messages
+		for _, msg := range session.Messages {
+			req.History = append(req.History, llm.ChatMessage{
+				Role:    msg.Role,
+				Content: msg.Content,
+			})
 		}
 
 		// Add User Message

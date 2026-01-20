@@ -34,8 +34,16 @@ func (s *Server) Search(ctx context.Context, req *SearchRequest) (*SearchRespons
 
 	messages := []llm.ChatMessage{
 		{Role: "system", Content: systemPrompt},
-		{Role: "user", Content: req.Query},
 	}
+
+	if len(req.History) > 0 {
+		messages = append(messages, req.History...)
+	}
+
+	messages = append(messages, llm.ChatMessage{
+		Role:    "user",
+		Content: req.Query,
+	})
 
 	tools := GetSearchTools()
 
