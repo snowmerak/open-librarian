@@ -44,7 +44,7 @@ type EmbedResponse struct {
 
 const (
 	DefaultTextModel      = "gemma3:12b"
-	DefaultEmbeddingModel = "paraphrase-multilingual"
+	DefaultEmbeddingModel = "embeddinggemma:300m"
 	DefaultBaseURL        = "http://localhost:11434"
 )
 
