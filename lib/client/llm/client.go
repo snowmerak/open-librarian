@@ -95,17 +95,22 @@ const (
 )
 
 // NewClient creates a new LLM client
-func NewClient(provider, genBaseURL, genKey, genModel, ollamaBaseURL string) *Client {
+func NewClient(genBaseURL, genKey, genModel, ollamaBaseURL string) *Client {
 	log := logger.NewLogger("llm-client")
 	log.StartWithMsg("Creating new LLM client")
-
-	if provider == "" {
-		provider = ProviderOllama
-	}
 
 	// Normalize URLs (remove trailing slash)
 	genBaseURL = strings.TrimRight(genBaseURL, "/")
 	ollamaBaseURL = strings.TrimRight(ollamaBaseURL, "/")
+
+	var provider string
+	if strings.Contains(genBaseURL, "openrouter.ai") {
+		provider = ProviderOpenRouter
+	} else if genBaseURL == ollamaBaseURL {
+		provider = ProviderOllama
+	} else {
+		provider = ProviderOpenAPI
+	}
 
 	log.Info().
 		Str("provider", provider).

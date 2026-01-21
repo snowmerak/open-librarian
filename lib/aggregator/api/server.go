@@ -23,7 +23,7 @@ type Server struct {
 }
 
 // NewServer creates a new API server instance
-func NewServer(llmProvider, llmBaseURL, llmKey, llmModel, ollamaBaseURL, opensearchBaseURL, qdrantHost, mongoURI, jwtSecret string, qdrantPort int) (*Server, error) {
+func NewServer(llmBaseURL, llmKey, llmModel, ollamaBaseURL, opensearchBaseURL, qdrantHost, mongoURI, jwtSecret string, qdrantPort int) (*Server, error) {
 	serverLogger := logger.NewLogger("server_init").StartWithMsg("Initializing server components")
 
 	// Initialize Qdrant client
@@ -71,12 +71,11 @@ func NewServer(llmProvider, llmBaseURL, llmKey, llmModel, ollamaBaseURL, opensea
 	jwtLogger.EndWithMsg("JWT service initialization complete")
 
 	// Create other clients
-	llmClient := llm.NewClient(llmProvider, llmBaseURL, llmKey, llmModel, ollamaBaseURL)
+	llmClient := llm.NewClient(llmBaseURL, llmKey, llmModel, ollamaBaseURL)
 	opensearchClient := opensearch.NewClient(opensearchBaseURL)
 	languageDetector := language.NewDetector()
 
 	serverLogger.Info().
-		Str("llm_provider", llmProvider).
 		Str("ollama_url", ollamaBaseURL).
 		Str("opensearch_url", opensearchBaseURL).
 		Str("qdrant_host", qdrantHost).

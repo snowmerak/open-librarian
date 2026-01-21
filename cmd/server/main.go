@@ -51,7 +51,6 @@ func main() {
 		Str("port", port).
 		Str("opensearch_url", opensearchURL).
 		Str("ollama_url", ollamaURL).
-		Str("llm_provider", llmProvider).
 		Str("llm_url", llmURL).
 		Str("llm_model", llmModel).
 		Str("qdrant_host", qdrantHost).
@@ -72,7 +71,7 @@ func main() {
 
 	// Initialize API server
 	apiInitLogger := logger.NewLogger("api_init").StartWithMsg("Initializing API server")
-	apiServer, err := api.NewServer(llmProvider, llmURL, llmKey, llmModel, ollamaURL, opensearchURL, qdrantHost, mongoURI, jwtSecret, qdrantPort)
+	apiServer, err := api.NewServer(llmURL, llmKey, llmModel, ollamaURL, opensearchURL, qdrantHost, mongoURI, jwtSecret, qdrantPort)
 	if err != nil {
 		apiInitLogger.EndWithError(err)
 		mainLogger.Error().Err(err).Msg("Failed to create API server")
